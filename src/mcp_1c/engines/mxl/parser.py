@@ -178,18 +178,25 @@ class MxlParser:
             document.areas.append(area)
 
         # Find cells not in any area (header/footer)
-        if rows_data and document.areas:
-            first_area_start = min(a.start_row for a in document.areas)
-            last_area_end = max(a.end_row for a in document.areas)
+        if rows_data:
+            if document.areas:
+                first_area_start = min(a.start_row for a in document.areas)
+                last_area_end = max(a.end_row for a in document.areas)
 
-            for row_idx, row_cells in enumerate(rows_data, start=1):
-                for cell_data in row_cells:
-                    if row_idx < first_area_start:
+                for row_idx, row_cells in enumerate(rows_data, start=1):
+                    for cell_data in row_cells:
+                        if row_idx < first_area_start:
+                            cell = self._create_cell(cell_data)
+                            document.header_cells.append(cell)
+                        elif row_idx > last_area_end:
+                            cell = self._create_cell(cell_data)
+                            document.footer_cells.append(cell)
+            else:
+                # No areas defined - treat all cells as header cells
+                for row_idx, row_cells in enumerate(rows_data, start=1):
+                    for cell_data in row_cells:
                         cell = self._create_cell(cell_data)
                         document.header_cells.append(cell)
-                    elif row_idx > last_area_end:
-                        cell = self._create_cell(cell_data)
-                        document.footer_cells.append(cell)
 
     def _parse_template_wrapper(
         self, element: etree._Element, document: MxlDocument
@@ -282,12 +289,16 @@ class MxlParser:
         }
 
         # Get text content
-        text_elem = element.find("Text") or element.find("text")
+        text_elem = element.find("Text")
+        if text_elem is None:
+            text_elem = element.find("text")
         if text_elem is not None and text_elem.text:
             cell_data["text"] = text_elem.text
 
         # Check for parameter element
-        param_elem = element.find("Parameter") or element.find("parameter")
+        param_elem = element.find("Parameter")
+        if param_elem is None:
+            param_elem = element.find("parameter")
         if param_elem is not None and param_elem.text:
             cell_data["text"] = f"[{param_elem.text}]"
             cell_data["cell_type"] = CellType.PARAMETER
@@ -325,7 +336,9 @@ class MxlParser:
         style: dict[str, Any] = {}
 
         # Font
-        font_elem = element.find("Font") or element.find("font")
+        font_elem = element.find("Font")
+        if font_elem is None:
+            font_elem = element.find("font")
         if font_elem is not None:
             style["font_name"] = self._get_text(font_elem, "Name")
             style["font_size"] = self._get_int(font_elem, "Size")
@@ -363,10 +376,14 @@ class MxlParser:
             "bottom": BorderStyle.NONE,
         }
 
-        border_elem = element.find("Border") or element.find("border")
+        border_elem = element.find("Border")
+        if border_elem is None:
+            border_elem = element.find("border")
         if border_elem is not None:
             for side in ["Left", "Right", "Top", "Bottom"]:
-                side_elem = border_elem.find(side) or border_elem.find(side.lower())
+                side_elem = border_elem.find(side)
+                if side_elem is None:
+                    side_elem = border_elem.find(side.lower())
                 if side_elem is not None:
                     style_text = self._get_text(side_elem, "Style")
                     if style_text:
@@ -379,13 +396,15 @@ class MxlParser:
         areas: list[dict[str, Any]] = []
 
         # Try different area container names
-        areas_container = element.find("Areas") or element.find("NamedAreas")
+        areas_container = element.find("Areas")
+        if areas_container is None:
+            areas_container = element.find("NamedAreas")
         if areas_container is None:
             return areas
 
-        area_elements = areas_container.findall("Area") or areas_container.findall(
-            "NamedArea"
-        )
+        area_elements = areas_container.findall("Area")
+        if not area_elements:
+            area_elements = areas_container.findall("NamedArea")
 
         for area_elem in area_elements:
             area_data: dict[str, Any] = {}
@@ -632,16 +651,9 @@ class MxlParser:
         """Determine area type from name."""
         name_lower = name.lower()
 
-        if any(kw in name_lower for kw in ["шапка", "header", "заголовок"]):
-            return AreaType.HEADER
-        elif any(kw in name_lower for kw in ["подвал", "footer", "итог"]):
-            return AreaType.FOOTER
-        elif any(kw in name_lower for kw in ["шапкатаблицы", "tableheader", "колонки"]):
+        # Check more specific patterns first (table-related)
+        if any(kw in name_lower for kw in ["шапкатаблицы", "tableheader", "колонки"]):
             return AreaType.TABLE_HEADER
-        elif any(
-            kw in name_lower for kw in ["строка", "row", "detail", "данные", "table"]
-        ):
-            return AreaType.TABLE_ROW
         elif any(kw in name_lower for kw in ["итогтаблицы", "tablefooter"]):
             return AreaType.TABLE_FOOTER
         elif any(kw in name_lower for kw in ["группа", "group"]):
@@ -649,6 +661,15 @@ class MxlParser:
                 return AreaType.GROUP_HEADER
             elif "подвал" in name_lower or "footer" in name_lower:
                 return AreaType.GROUP_FOOTER
+        # Check general patterns after specific ones
+        elif any(kw in name_lower for kw in ["шапка", "header", "заголовок"]):
+            return AreaType.HEADER
+        elif any(kw in name_lower for kw in ["подвал", "footer", "итог"]):
+            return AreaType.FOOTER
+        elif any(
+            kw in name_lower for kw in ["строка", "row", "detail", "данные", "table"]
+        ):
+            return AreaType.TABLE_ROW
 
         return AreaType.CUSTOM
 
@@ -694,7 +715,9 @@ class MxlParser:
 
     def _get_text(self, element: etree._Element, tag: str) -> str | None:
         """Get text content of child element."""
-        child = element.find(tag) or element.find(tag.lower())
+        child = element.find(tag)
+        if child is None:
+            child = element.find(tag.lower())
         if child is not None and child.text:
             return child.text.strip()
         return element.get(tag) or element.get(tag.lower())

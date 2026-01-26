@@ -70,95 +70,90 @@ class XmlParser:
 
         result: dict[str, list[str]] = {}
 
-        # Map of XML element names (singular form) to MetadataType
-        # 1C Configuration.xml uses singular: <Catalog>, <Document>, etc.
+        # Map of XML container element names (plural form) to MetadataType
+        # 1C Configuration.xml uses: <Catalogs><item>Name</item></Catalogs>
         element_map = {
-            "Catalog": MetadataType.CATALOG,
-            "Document": MetadataType.DOCUMENT,
-            "Enum": MetadataType.ENUM,
-            "ChartOfCharacteristicTypes": MetadataType.CHART_OF_CHARACTERISTIC_TYPES,
-            "ChartOfAccounts": MetadataType.CHART_OF_ACCOUNTS,
-            "ChartOfCalculationTypes": MetadataType.CHART_OF_CALCULATION_TYPES,
-            "ExchangePlan": MetadataType.EXCHANGE_PLAN,
-            "BusinessProcess": MetadataType.BUSINESS_PROCESS,
-            "Task": MetadataType.TASK,
-            "InformationRegister": MetadataType.INFORMATION_REGISTER,
-            "AccumulationRegister": MetadataType.ACCUMULATION_REGISTER,
-            "AccountingRegister": MetadataType.ACCOUNTING_REGISTER,
-            "CalculationRegister": MetadataType.CALCULATION_REGISTER,
-            "Report": MetadataType.REPORT,
-            "DataProcessor": MetadataType.DATA_PROCESSOR,
-            "Constant": MetadataType.CONSTANT,
-            "CommonModule": MetadataType.COMMON_MODULE,
-            "Subsystem": MetadataType.SUBSYSTEM,
-            "Role": MetadataType.ROLE,
-            "CommonForm": MetadataType.COMMON_FORM,
-            "CommonTemplate": MetadataType.COMMON_TEMPLATE,
-            "SessionParameter": MetadataType.SESSION_PARAMETER,
-            "FunctionalOption": MetadataType.FUNCTIONAL_OPTION,
-            "ScheduledJob": MetadataType.SCHEDULED_JOB,
-            "EventSubscription": MetadataType.EVENT_SUBSCRIPTION,
-            "HTTPService": MetadataType.HTTP_SERVICE,
-            "WebService": MetadataType.WEB_SERVICE,
+            "Catalogs": MetadataType.CATALOG,
+            "Documents": MetadataType.DOCUMENT,
+            "Enums": MetadataType.ENUM,
+            "ChartsOfCharacteristicTypes": MetadataType.CHART_OF_CHARACTERISTIC_TYPES,
+            "ChartsOfAccounts": MetadataType.CHART_OF_ACCOUNTS,
+            "ChartsOfCalculationTypes": MetadataType.CHART_OF_CALCULATION_TYPES,
+            "ExchangePlans": MetadataType.EXCHANGE_PLAN,
+            "BusinessProcesses": MetadataType.BUSINESS_PROCESS,
+            "Tasks": MetadataType.TASK,
+            "InformationRegisters": MetadataType.INFORMATION_REGISTER,
+            "AccumulationRegisters": MetadataType.ACCUMULATION_REGISTER,
+            "AccountingRegisters": MetadataType.ACCOUNTING_REGISTER,
+            "CalculationRegisters": MetadataType.CALCULATION_REGISTER,
+            "Reports": MetadataType.REPORT,
+            "DataProcessors": MetadataType.DATA_PROCESSOR,
+            "Constants": MetadataType.CONSTANT,
+            "CommonModules": MetadataType.COMMON_MODULE,
+            "Subsystems": MetadataType.SUBSYSTEM,
+            "Roles": MetadataType.ROLE,
+            "CommonForms": MetadataType.COMMON_FORM,
+            "CommonTemplates": MetadataType.COMMON_TEMPLATE,
+            "SessionParameters": MetadataType.SESSION_PARAMETER,
+            "FunctionalOptions": MetadataType.FUNCTIONAL_OPTION,
+            "ScheduledJobs": MetadataType.SCHEDULED_JOB,
+            "EventSubscriptions": MetadataType.EVENT_SUBSCRIPTION,
+            "HTTPServices": MetadataType.HTTP_SERVICE,
+            "WebServices": MetadataType.WEB_SERVICE,
         }
 
-        for elem_name, meta_type in element_map.items():
-            objects = self._find_elements_by_name(root, elem_name)
+        for container_name, meta_type in element_map.items():
+            objects = self._find_items_in_container(root, container_name)
             if objects:
                 result[meta_type.value] = objects
-                self.logger.debug(f"Found {len(objects)} {elem_name}")
+                self.logger.debug(f"Found {len(objects)} {container_name}")
 
         return result
 
-    def _find_elements_by_name(
+    def _find_items_in_container(
+        self,
+        root: etree._Element,
+        container_name: str,
+    ) -> list[str]:
+        """
+        Find all <item> elements within a container element.
+
+        Structure: <ContainerName><item>ObjectName</item></ContainerName>
+        """
+        results: list[str] = []
+
+        # Try with local-name to handle namespaces
+        xpath = f".//*[local-name()='{container_name}']/*[local-name()='item']"
+        try:
+            elements = root.xpath(xpath)
+            for elem in elements:
+                if elem.text:
+                    results.append(elem.text.strip())
+        except Exception:
+            pass
+
+        return results
+
+    def _find_elements_by_local_name(
         self,
         root: etree._Element,
         element_name: str,
-    ) -> list[str]:
-        """Find all elements with given tag name and extract their text content."""
-        results: list[str] = []
+    ) -> list[etree._Element]:
+        """Find all elements by local name (ignoring namespace)."""
+        xpath = f".//*[local-name()='{element_name}']"
+        try:
+            return root.xpath(xpath)
+        except Exception:
+            return []
 
-        # Get default namespace from root
-        nsmap = root.nsmap
-        default_ns = nsmap.get(None, "")
-
-        # Try with default namespace
-        if default_ns:
-            xpath = f".//{{{default_ns}}}{element_name}"
-            try:
-                elements = root.xpath(xpath)
-                for elem in elements:
-                    if elem.text:
-                        results.append(elem.text.strip())
-            except Exception:
-                pass
-
-        # Try with known namespaces
-        if not results:
-            for ns_uri in NAMESPACES.values():
-                xpath = f".//{{{ns_uri}}}{element_name}"
-                try:
-                    elements = root.xpath(xpath)
-                    for elem in elements:
-                        if elem.text:
-                            results.append(elem.text.strip())
-                    if results:
-                        break
-                except Exception:
-                    continue
-
-        # Try without namespace (local-name)
-        if not results:
-            xpath = f".//*[local-name()='{element_name}']"
-            try:
-                elements = root.xpath(xpath)
-                for elem in elements:
-                    if elem.text:
-                        results.append(elem.text.strip())
-            except Exception:
-                pass
-
-        return results
+    def _find_element_by_local_name(
+        self,
+        root: etree._Element,
+        element_name: str,
+    ) -> etree._Element | None:
+        """Find first element by local name (ignoring namespace)."""
+        elements = self._find_elements_by_local_name(root, element_name)
+        return elements[0] if elements else None
 
     def _extract_name(self, element: etree._Element) -> str:
         """Extract object name from element."""
@@ -284,10 +279,12 @@ class XmlParser:
 
         # Parse content
         content: list[str] = []
-        content_elements = root.xpath(".//Content/*")
-        for elem in content_elements:
-            if elem.text:
-                content.append(elem.text.strip())
+        content_container = self._find_element_by_local_name(root, "Content")
+        if content_container is not None:
+            for child in content_container:
+                local_name = etree.QName(child).localname
+                if local_name == "item" and child.text:
+                    content.append(child.text.strip())
 
         # Find child subsystems
         children: list[str] = []
@@ -362,8 +359,13 @@ class XmlParser:
         xpath: str,
         default: str = "",
     ) -> str:
-        """Get text content of element by xpath."""
-        elements = root.xpath(xpath)
+        """Get text content of element by xpath (handles namespaces)."""
+        # Extract element name from xpath like ".//ElementName"
+        if xpath.startswith(".//"):
+            element_name = xpath[3:]
+            elements = self._find_elements_by_local_name(root, element_name)
+        else:
+            elements = root.xpath(xpath)
         if elements and elements[0].text:
             return elements[0].text.strip()
         return default
@@ -397,13 +399,19 @@ class XmlParser:
         xpath: str,
     ) -> str:
         """Get localized string (prefer Russian, fallback to first available)."""
-        elements = root.xpath(xpath)
+        # Extract element name from xpath like ".//ElementName"
+        if xpath.startswith(".//"):
+            element_name = xpath[3:]
+            elements = self._find_elements_by_local_name(root, element_name)
+        else:
+            elements = root.xpath(xpath)
+
         if not elements:
             return ""
 
         elem = elements[0]
 
-        # Try to find Russian version
+        # Try to find Russian version in <item> children
         for child in elem:
             lang = child.get("lang", "") or child.get("{http://www.w3.org/XML/1998/namespace}lang", "")
             if lang in ("ru", "ru_RU"):
@@ -420,8 +428,15 @@ class XmlParser:
         """Parse object attributes."""
         attributes: list[Attribute] = []
 
-        for attr_elem in root.xpath(".//Attributes/*") + root.xpath(".//Attribute"):
-            name = self._get_text(attr_elem, ".//Name", "")
+        # Find Attributes container, then get Attribute children
+        attrs_container = self._find_element_by_local_name(root, "Attributes")
+        attr_elements = []
+        if attrs_container is not None:
+            attr_elements = self._find_elements_by_local_name(attrs_container, "Attribute")
+
+        for attr_elem in attr_elements:
+            name_elem = self._find_element_by_local_name(attr_elem, "Name")
+            name = name_elem.text.strip() if name_elem is not None and name_elem.text else ""
             if not name:
                 name = attr_elem.get("name", "")
 
@@ -443,8 +458,15 @@ class XmlParser:
         """Parse tabular sections."""
         sections: list[TabularSection] = []
 
-        for ts_elem in root.xpath(".//TabularSections/*") + root.xpath(".//TabularSection"):
-            name = self._get_text(ts_elem, ".//Name", "")
+        # Find TabularSections container, then get TabularSection children
+        ts_container = self._find_element_by_local_name(root, "TabularSections")
+        ts_elements = []
+        if ts_container is not None:
+            ts_elements = self._find_elements_by_local_name(ts_container, "TabularSection")
+
+        for ts_elem in ts_elements:
+            name_elem = self._find_element_by_local_name(ts_elem, "Name")
+            name = name_elem.text.strip() if name_elem is not None and name_elem.text else ""
             if not name:
                 name = ts_elem.get("name", "")
 
@@ -465,21 +487,16 @@ class XmlParser:
         """Parse forms."""
         forms: list[Form] = []
 
-        for form_elem in root.xpath(".//Forms/*") + root.xpath(".//Form"):
-            name = self._get_text(form_elem, ".//Name", "")
-            if not name:
-                name = form_elem.get("name", "")
-                if not name and form_elem.text:
-                    name = form_elem.text.strip()
-
-            if not name:
-                continue
-
-            form = Form(
-                name=name,
-                synonym=self._get_localized_string(form_elem, ".//Synonym"),
-            )
-            forms.append(form)
+        # Find Forms container, then get item children
+        forms_container = self._find_element_by_local_name(root, "Forms")
+        if forms_container is not None:
+            # Forms are listed as <item>FormName</item>
+            for child in forms_container:
+                local_name = etree.QName(child).localname
+                if local_name == "item" and child.text:
+                    name = child.text.strip()
+                    if name:
+                        forms.append(Form(name=name, synonym=""))
 
         return forms
 
@@ -487,21 +504,16 @@ class XmlParser:
         """Parse templates."""
         templates: list[Template] = []
 
-        for tmpl_elem in root.xpath(".//Templates/*") + root.xpath(".//Template"):
-            name = self._get_text(tmpl_elem, ".//Name", "")
-            if not name:
-                name = tmpl_elem.get("name", "")
-                if not name and tmpl_elem.text:
-                    name = tmpl_elem.text.strip()
-
-            if not name:
-                continue
-
-            template = Template(
-                name=name,
-                synonym=self._get_localized_string(tmpl_elem, ".//Synonym"),
-            )
-            templates.append(template)
+        # Find Templates container, then get item children
+        templates_container = self._find_element_by_local_name(root, "Templates")
+        if templates_container is not None:
+            # Templates are listed as <item>TemplateName</item>
+            for child in templates_container:
+                local_name = etree.QName(child).localname
+                if local_name == "item" and child.text:
+                    name = child.text.strip()
+                    if name:
+                        templates.append(Template(name=name, synonym=""))
 
         return templates
 
@@ -549,9 +561,9 @@ class XmlParser:
 
     def _parse_type(self, elem: etree._Element) -> str:
         """Parse type description from element."""
-        type_elem = elem.xpath(".//Type")
-        if type_elem and type_elem[0].text:
-            return type_elem[0].text.strip()
+        type_elem = self._find_element_by_local_name(elem, "Type")
+        if type_elem is not None and type_elem.text:
+            return type_elem.text.strip()
         return "String"
 
     def _is_register(self, metadata_type: MetadataType) -> bool:
@@ -566,37 +578,55 @@ class XmlParser:
     def _parse_dimensions(self, root: etree._Element) -> list[Attribute]:
         """Parse register dimensions."""
         dimensions: list[Attribute] = []
-        for dim_elem in root.xpath(".//Dimensions/*") + root.xpath(".//Dimension"):
-            name = self._get_text(dim_elem, ".//Name", "")
-            if not name:
-                name = dim_elem.get("name", "")
-            if name:
-                dimensions.append(Attribute(
-                    name=name,
-                    synonym=self._get_localized_string(dim_elem, ".//Synonym"),
-                    type=self._parse_type(dim_elem),
-                ))
+
+        # Find Dimensions container
+        dims_container = self._find_element_by_local_name(root, "Dimensions")
+        if dims_container is not None:
+            dim_elements = self._find_elements_by_local_name(dims_container, "Dimension")
+            for dim_elem in dim_elements:
+                name_elem = self._find_element_by_local_name(dim_elem, "Name")
+                name = name_elem.text.strip() if name_elem is not None and name_elem.text else ""
+                if not name:
+                    name = dim_elem.get("name", "")
+                if name:
+                    dimensions.append(Attribute(
+                        name=name,
+                        synonym=self._get_localized_string(dim_elem, ".//Synonym"),
+                        type=self._parse_type(dim_elem),
+                    ))
         return dimensions
 
     def _parse_resources(self, root: etree._Element) -> list[Attribute]:
         """Parse register resources."""
         resources: list[Attribute] = []
-        for res_elem in root.xpath(".//Resources/*") + root.xpath(".//Resource"):
-            name = self._get_text(res_elem, ".//Name", "")
-            if not name:
-                name = res_elem.get("name", "")
-            if name:
-                resources.append(Attribute(
-                    name=name,
-                    synonym=self._get_localized_string(res_elem, ".//Synonym"),
-                    type=self._parse_type(res_elem),
-                ))
+
+        # Find Resources container
+        res_container = self._find_element_by_local_name(root, "Resources")
+        if res_container is not None:
+            res_elements = self._find_elements_by_local_name(res_container, "Resource")
+            for res_elem in res_elements:
+                name_elem = self._find_element_by_local_name(res_elem, "Name")
+                name = name_elem.text.strip() if name_elem is not None and name_elem.text else ""
+                if not name:
+                    name = res_elem.get("name", "")
+                if name:
+                    resources.append(Attribute(
+                        name=name,
+                        synonym=self._get_localized_string(res_elem, ".//Synonym"),
+                        type=self._parse_type(res_elem),
+                    ))
         return resources
 
     def _parse_register_records(self, root: etree._Element) -> list[str]:
         """Parse document register records."""
         records: list[str] = []
-        for rec_elem in root.xpath(".//RegisterRecords/*"):
-            if rec_elem.text:
-                records.append(rec_elem.text.strip())
+
+        # Find RegisterRecords container
+        rr_container = self._find_element_by_local_name(root, "RegisterRecords")
+        if rr_container is not None:
+            for child in rr_container:
+                local_name = etree.QName(child).localname
+                if local_name == "item" and child.text:
+                    records.append(child.text.strip())
+
         return records

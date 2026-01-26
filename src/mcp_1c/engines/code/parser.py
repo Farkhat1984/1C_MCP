@@ -87,6 +87,11 @@ EXTENDED_PATTERNS = {
         r"(?P<name>[a-zA-Zа-яА-ЯёЁ_][a-zA-Zа-яА-ЯёЁ0-9_]*)\s*\((?P<args>[^)]*)\)",
         re.IGNORECASE,
     ),
+    # Chain method call: ).MethodName(args) - for calls like obj.Method1().Method2()
+    "chain_method_call": re.compile(
+        r"\)\s*\.\s*(?P<name>[a-zA-Zа-яА-ЯёЁ_][a-zA-Zа-яА-ЯёЁ0-9_]*)\s*\((?P<args>[^)]*)\)",
+        re.IGNORECASE,
+    ),
     # Async call: Ждать/Await
     "async_call": re.compile(
         r"(?:Ждать|Await)\s+(?P<call>[a-zA-Zа-яА-ЯёЁ_][a-zA-Zа-яА-ЯёЁ0-9_.]*\s*\([^)]*\))",
@@ -302,8 +307,9 @@ class BslParser:
             content,
             re.MULTILINE | re.IGNORECASE,
         ):
-            start_pos = match.start()
-            start_line = content[:start_pos].count("\n") + 1
+            # Use position of "type" group (Процедура/Функция) for accurate line number
+            type_pos = match.start("type")
+            start_line = content[:type_pos].count("\n") + 1
 
             # Find end of procedure
             end_line = self._find_procedure_end(lines, start_line)
@@ -333,10 +339,8 @@ class BslParser:
             # Find containing region
             region_name = self._find_containing_region(start_line, regions)
 
-            # Get signature line
+            # Signature line is the same as start_line (line with Процедура/Функция)
             signature_line = start_line
-            if directive_str:
-                signature_line += directive_str.count("\n")
 
             # Extract body
             body = "\n".join(lines[start_line - 1 : end_line])
@@ -590,12 +594,13 @@ class BslParser:
         procedure_names = {p.name.lower() for p in procedures}
 
         # Keywords to exclude (not method calls)
+        # Note: "выполнить/execute" are NOT keywords - they are methods of Query object
         keywords = {
             "если", "тогда", "иначе", "иначеесли", "конецесли",
             "для", "каждого", "из", "по", "цикл", "конеццикла", "пока",
             "попытка", "исключение", "конецпопытки",
             "возврат", "перейти", "продолжить", "прервать",
-            "новый", "new", "выполнить", "execute",
+            "новый", "new",
             "if", "then", "else", "elseif", "endif",
             "for", "each", "in", "to", "do", "enddo", "while",
             "try", "except", "endtry",
@@ -619,6 +624,9 @@ class BslParser:
             comment_pos = line_no_strings.find("//")
             if comment_pos >= 0:
                 line_no_strings = line_no_strings[:comment_pos]
+
+            # Find containing procedure (computed once per line)
+            containing_proc = self._find_containing_procedure(i, procedures)
 
             # Find all method calls in line
             for match in EXTENDED_PATTERNS["method_call"].finditer(line_no_strings):
@@ -648,9 +656,6 @@ class BslParser:
                     # Simple counting by commas (not 100% accurate for nested calls)
                     arg_count = args_text.count(",") + 1
 
-                # Find containing procedure
-                containing_proc = self._find_containing_procedure(i, procedures)
-
                 # Check if async call
                 is_async = bool(
                     re.search(
@@ -664,6 +669,44 @@ class BslParser:
                     MethodCall(
                         name=method_name,
                         object_name=object_name,
+                        arguments_text=args_text.strip(),
+                        argument_count=arg_count,
+                        line=i,
+                        column=match.start(),
+                        containing_procedure=containing_proc,
+                        is_async_call=is_async,
+                    )
+                )
+
+            # Find chain method calls: ).Method(args) patterns
+            for match in EXTENDED_PATTERNS["chain_method_call"].finditer(line_no_strings):
+                method_name = match.group("name")
+                method_name_lower = method_name.lower()
+
+                # Skip keywords
+                if method_name_lower in keywords:
+                    continue
+
+                args_text = match.group("args")
+
+                # Count arguments
+                arg_count = 0
+                if args_text.strip():
+                    arg_count = args_text.count(",") + 1
+
+                # Check if async call
+                is_async = bool(
+                    re.search(
+                        r"(?:Ждать|Await)\s+" + re.escape(method_name),
+                        line,
+                        re.IGNORECASE,
+                    )
+                )
+
+                method_calls.append(
+                    MethodCall(
+                        name=method_name,
+                        object_name=None,  # Chain calls don't have explicit object
                         arguments_text=args_text.strip(),
                         argument_count=arg_count,
                         line=i,

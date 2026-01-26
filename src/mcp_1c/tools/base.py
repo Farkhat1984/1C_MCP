@@ -7,7 +7,7 @@ Implements the Template Method and Strategy patterns for tools.
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from mcp.types import Tool
 
 from mcp_1c.utils.logger import get_logger
@@ -16,19 +16,17 @@ from mcp_1c.utils.logger import get_logger
 class ToolInput(BaseModel):
     """Base class for tool input validation."""
 
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
 
 
 class ToolResult(BaseModel):
     """Result of tool execution."""
 
+    model_config = ConfigDict(extra="forbid")
+
     success: bool = True
     data: Any = None
     error: str | None = None
-
-    class Config:
-        extra = "forbid"
 
 
 class BaseTool(ABC):

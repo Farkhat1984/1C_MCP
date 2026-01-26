@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 
 from mcp_1c.engines.code.engine import CodeEngine
 from mcp_1c.engines.metadata.engine import MetadataEngine
@@ -17,7 +18,7 @@ from mcp_1c.domain.metadata import MetadataType, ModuleType
 class TestCodeEngineIntegration:
     """Integration tests for CodeEngine."""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def meta_engine(self, mock_config_path: Path) -> MetadataEngine:
         """Create and initialize metadata engine."""
         MetadataEngine._instance = None

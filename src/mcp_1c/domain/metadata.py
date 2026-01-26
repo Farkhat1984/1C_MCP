@@ -9,7 +9,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MetadataType(str, Enum):
@@ -377,5 +377,4 @@ class MetadataObject(BaseModel):
                 return module.path
         return None
 
-    class Config:
-        use_enum_values = False
+    model_config = ConfigDict(use_enum_values=False)

@@ -127,7 +127,7 @@ class TestMxlParser:
 
     def test_parse_named_areas(self) -> None:
         """Test parsing named areas."""
-        xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
         <SpreadsheetDocument>
             <Rows>
                 <Row><Cell><Text>Header</Text></Cell></Row>
@@ -158,7 +158,7 @@ class TestMxlParser:
                 </Area>
             </Areas>
         </SpreadsheetDocument>
-        """
+        """.encode("utf-8")
 
         result = self.parser.parse_content(xml_content)
 
@@ -604,7 +604,7 @@ class TestParameterExtraction:
 
     def test_russian_parameter_names(self) -> None:
         """Test extracting Russian parameter names."""
-        xml_content = b"""<?xml version="1.0" encoding="UTF-8"?>
+        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
         <SpreadsheetDocument>
             <Rows>
                 <Row>
@@ -613,7 +613,7 @@ class TestParameterExtraction:
                 </Row>
             </Rows>
         </SpreadsheetDocument>
-        """
+        """.encode("utf-8")
 
         result = self.parser.parse_content(xml_content)
 

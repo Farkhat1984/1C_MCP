@@ -3,11 +3,12 @@ Unit tests for Platform Knowledge Base engine.
 """
 
 import pytest
+import pytest_asyncio
 
 from mcp_1c.engines.platform import PlatformEngine
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def engine():
     """Create and initialize platform engine."""
     eng = PlatformEngine()
@@ -31,7 +32,8 @@ class TestPlatformEngine:
         assert method is not None
         assert method.name == "СтрДлина"
         assert method.name_en == "StrLen"
-        assert "Строка" in method.return_types
+        # СтрДлина returns Число (length of string)
+        assert "Число" in method.return_types
 
     @pytest.mark.asyncio
     async def test_get_method_english(self, engine):
@@ -51,7 +53,15 @@ class TestPlatformEngine:
         """Test searching methods."""
         results = engine.search_methods("Стр")
         assert len(results) > 0
-        assert all("Стр" in m.name or "Str" in m.name_en for m in results)
+        # Search matches name, name_en, description or keywords
+        for m in results:
+            query = "стр"
+            assert (
+                query in m.name.lower()
+                or "str" in m.name_en.lower()
+                or query in m.description.lower()
+                or any(query in kw.lower() for kw in m.keywords)
+            )
 
     @pytest.mark.asyncio
     async def test_get_type_russian(self, engine):

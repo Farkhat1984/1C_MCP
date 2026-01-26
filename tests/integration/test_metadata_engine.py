@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 
 from mcp_1c.engines.metadata.engine import MetadataEngine
 from mcp_1c.domain.metadata import MetadataType
@@ -16,7 +17,7 @@ from mcp_1c.domain.metadata import MetadataType
 class TestMetadataEngineIntegration:
     """Integration tests for MetadataEngine."""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def engine(self, mock_config_path: Path) -> MetadataEngine:
         """Create and initialize engine with mock configuration."""
         # Reset singleton for clean test
@@ -164,7 +165,7 @@ class TestMetadataEngineIntegration:
 class TestMetadataEngineCaching:
     """Tests for caching behavior."""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def engine(self, mock_config_path: Path) -> MetadataEngine:
         """Create and initialize engine."""
         MetadataEngine._instance = None

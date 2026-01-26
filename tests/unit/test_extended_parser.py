@@ -133,6 +133,7 @@ class TestExtendedParser:
         assert "СоздатьДокумент" in call_names
         assert "НайтиПоКоду" in call_names
         assert "Записать" in call_names
+        assert "Количество" in call_names
 
     def test_extract_method_calls_with_objects(self, parser: BslParser, sample_bsl_code: str):
         """Test that method calls capture object names."""

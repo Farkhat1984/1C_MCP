@@ -3,6 +3,7 @@ Unit tests for config tools.
 """
 
 import pytest
+import pytest_asyncio
 
 from mcp_1c.engines.metadata import MetadataEngine
 from mcp_1c.tools.config_tools import (
@@ -15,7 +16,7 @@ from mcp_1c.tools.config_tools import (
 )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def initialized_engine(mock_config_path):
     """Create and initialize metadata engine with mock config."""
     engine = MetadataEngine.get_instance()

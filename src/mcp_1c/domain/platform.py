@@ -11,7 +11,7 @@ Models for representing 1C:Enterprise 8.3 platform API:
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 
 class PlatformVersion(str, Enum):
@@ -456,13 +456,8 @@ class PlatformKnowledgeBase(BaseModel):
     )
 
     # Quick access maps (built on load)
-    _types_by_name: dict[str, PlatformType] = {}
-    _events_by_name: dict[str, ObjectEvent] = {}
-
-    class Config:
-        """Pydantic config."""
-
-        underscore_attrs_are_private = True
+    _types_by_name: dict[str, PlatformType] = PrivateAttr(default_factory=dict)
+    _events_by_name: dict[str, ObjectEvent] = PrivateAttr(default_factory=dict)
 
     def model_post_init(self, __context: Any) -> None:
         """Build lookup maps after initialization."""

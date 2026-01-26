@@ -10,7 +10,7 @@ from typing import Any, ClassVar
 
 from mcp_1c.domain.templates import GenerationContext, TemplateCategory
 from mcp_1c.engines.code.bsl_ls import BslLanguageServer
-from mcp_1c.engines.templates import TemplateEngine
+from mcp_1c.engines.templates import get_template_engine
 from mcp_1c.tools.base import BaseTool
 
 
@@ -105,7 +105,7 @@ Pass template_id and values dictionary with placeholder values.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Generate query code."""
@@ -175,7 +175,7 @@ Pass template_id and values dictionary with placeholder values.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Generate handler code."""
@@ -235,7 +235,7 @@ Pass template_id and values dictionary.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Generate print form code."""
@@ -299,7 +299,7 @@ Pass template_id and values dictionary.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Generate movement code."""
@@ -363,7 +363,7 @@ Pass template_id and values dictionary.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Generate API code."""
@@ -420,7 +420,7 @@ Pass template_id and values dictionary.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Generate form handler code."""
@@ -473,7 +473,7 @@ Pass values with: SubscriptionName, Sources, EventName, HandlerName, HandlerCode
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Generate subscription handler code."""
@@ -524,7 +524,7 @@ Pass values with: JobName, HandlerName, JobCode, HasLogging, LogEventName.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Generate scheduled job handler code."""

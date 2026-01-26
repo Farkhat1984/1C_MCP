@@ -6,7 +6,7 @@ Tools for parsing, validating, and optimizing 1C queries.
 
 from typing import Any, ClassVar
 
-from mcp_1c.engines.templates import TemplateEngine
+from mcp_1c.engines.templates import get_template_engine
 from mcp_1c.tools.base import BaseTool
 
 
@@ -42,7 +42,7 @@ Supports both Russian and English query syntax.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Parse query."""
@@ -121,7 +121,7 @@ Returns validation result with errors, warnings, and suggestions.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Validate query."""
@@ -169,7 +169,7 @@ Returns list of suggestions with impact level.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Get optimization suggestions."""
@@ -224,7 +224,7 @@ Useful for understanding complex queries.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> str:
         """Explain query."""
@@ -259,7 +259,7 @@ Useful for dependency analysis and validation.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Get tables from query."""

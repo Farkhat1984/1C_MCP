@@ -7,7 +7,7 @@ Tools for listing, searching, and applying code patterns/templates.
 from typing import Any, ClassVar
 
 from mcp_1c.domain.templates import GenerationContext, TemplateCategory
-from mcp_1c.engines.templates import TemplateEngine
+from mcp_1c.engines.templates import get_template_engine
 from mcp_1c.tools.base import BaseTool
 
 
@@ -52,7 +52,7 @@ Returns list of templates with id, name, description, and tags.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """List templates."""
@@ -110,7 +110,7 @@ Returns full template definition including:
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Get template details."""
@@ -196,7 +196,7 @@ Returns generated code or error with missing/invalid placeholders.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Apply template."""
@@ -264,7 +264,7 @@ Returns list of suggestions sorted by relevance.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Suggest templates."""
@@ -343,7 +343,7 @@ Returns matching templates with relevance info.
 
     def __init__(self) -> None:
         super().__init__()
-        self._engine = TemplateEngine()
+        self._engine = get_template_engine()
 
     async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Search templates."""
