@@ -1,0 +1,695 @@
+{
+  "templates": [
+    {
+      "id": "query.select_simple",
+      "name": "Simple SELECT",
+      "name_ru": "Простая выборка",
+      "description": "Basic SELECT query from a single table",
+      "description_ru": "Базовый запрос SELECT из одной таблицы",
+      "category": "query",
+      "template_code": "ВЫБРАТЬ\n\t${Fields}\nИЗ\n\t${TableName} КАК ${Alias}{{#if HasCondition}}\nГДЕ\n\t${Condition}{{/if}}",
+      "placeholders": [
+        {
+          "name": "Fields",
+          "display_name": "Поля",
+          "description": "Список полей для выборки",
+          "type": "string",
+          "required": true,
+          "default_value": "*"
+        },
+        {
+          "name": "TableName",
+          "display_name": "Таблица",
+          "description": "Имя таблицы (например, Справочник.Номенклатура)",
+          "type": "table_name",
+          "required": true
+        },
+        {
+          "name": "Alias",
+          "display_name": "Псевдоним",
+          "description": "Псевдоним таблицы",
+          "type": "identifier",
+          "required": true,
+          "default_value": "Т"
+        },
+        {
+          "name": "HasCondition",
+          "display_name": "Есть условие",
+          "description": "Добавить секцию WHERE",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "Condition",
+          "display_name": "Условие",
+          "description": "Условие WHERE",
+          "type": "condition",
+          "required": false
+        }
+      ],
+      "tags": ["select", "выборка", "простой", "базовый"],
+      "use_cases": ["Получение данных из справочника", "Базовая выборка"],
+      "examples": [
+        {
+          "description": "Выборка всех товаров",
+          "values": {
+            "Fields": "Ссылка, Код, Наименование",
+            "TableName": "Справочник.Номенклатура",
+            "Alias": "Товары"
+          },
+          "result_preview": "ВЫБРАТЬ\n\tСсылка, Код, Наименование\nИЗ\n\tСправочник.Номенклатура КАК Товары"
+        }
+      ]
+    },
+    {
+      "id": "query.select_with_join",
+      "name": "SELECT with JOIN",
+      "name_ru": "Выборка с соединением",
+      "description": "SELECT query with LEFT JOIN",
+      "description_ru": "Запрос SELECT с левым соединением таблиц",
+      "category": "query",
+      "template_code": "ВЫБРАТЬ\n\t${Fields}\nИЗ\n\t${MainTable} КАК ${MainAlias}\n\tЛЕВОЕ СОЕДИНЕНИЕ ${JoinTable} КАК ${JoinAlias}\n\tПО ${MainAlias}.${JoinField} = ${JoinAlias}.Ссылка{{#if HasCondition}}\nГДЕ\n\t${Condition}{{/if}}",
+      "placeholders": [
+        {
+          "name": "Fields",
+          "display_name": "Поля",
+          "description": "Список полей для выборки",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "MainTable",
+          "display_name": "Основная таблица",
+          "description": "Основная таблица запроса",
+          "type": "table_name",
+          "required": true
+        },
+        {
+          "name": "MainAlias",
+          "display_name": "Псевдоним основной",
+          "description": "Псевдоним основной таблицы",
+          "type": "identifier",
+          "required": true,
+          "default_value": "Т"
+        },
+        {
+          "name": "JoinTable",
+          "display_name": "Присоединяемая таблица",
+          "description": "Таблица для соединения",
+          "type": "table_name",
+          "required": true
+        },
+        {
+          "name": "JoinAlias",
+          "display_name": "Псевдоним присоединяемой",
+          "description": "Псевдоним присоединяемой таблицы",
+          "type": "identifier",
+          "required": true,
+          "default_value": "С"
+        },
+        {
+          "name": "JoinField",
+          "display_name": "Поле соединения",
+          "description": "Поле основной таблицы для соединения",
+          "type": "identifier",
+          "required": true
+        },
+        {
+          "name": "HasCondition",
+          "display_name": "Есть условие",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "Condition",
+          "display_name": "Условие",
+          "type": "condition",
+          "required": false
+        }
+      ],
+      "tags": ["select", "join", "соединение", "левое соединение"],
+      "use_cases": ["Связанные данные", "Получение данных из связанных таблиц"]
+    },
+    {
+      "id": "query.select_grouped",
+      "name": "SELECT with GROUP BY",
+      "name_ru": "Выборка с группировкой",
+      "description": "SELECT query with grouping and aggregation",
+      "description_ru": "Запрос SELECT с группировкой и агрегацией",
+      "category": "query",
+      "template_code": "ВЫБРАТЬ\n\t${GroupFields},\n\t${AggregateFunction}(${AggregateField}) КАК ${AggregateAlias}\nИЗ\n\t${TableName} КАК ${Alias}{{#if HasCondition}}\nГДЕ\n\t${Condition}{{/if}}\nСГРУППИРОВАТЬ ПО\n\t${GroupFields}",
+      "placeholders": [
+        {
+          "name": "GroupFields",
+          "display_name": "Поля группировки",
+          "description": "Поля для группировки (через запятую)",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "AggregateFunction",
+          "display_name": "Агрегатная функция",
+          "description": "Функция агрегации",
+          "type": "string",
+          "required": true,
+          "allowed_values": ["СУММА", "КОЛИЧЕСТВО", "СРЕДНЕЕ", "МИНИМУМ", "МАКСИМУМ"]
+        },
+        {
+          "name": "AggregateField",
+          "display_name": "Поле агрегации",
+          "description": "Поле для агрегации",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "AggregateAlias",
+          "display_name": "Псевдоним результата",
+          "description": "Псевдоним агрегированного значения",
+          "type": "identifier",
+          "required": true,
+          "default_value": "Итого"
+        },
+        {
+          "name": "TableName",
+          "display_name": "Таблица",
+          "type": "table_name",
+          "required": true
+        },
+        {
+          "name": "Alias",
+          "display_name": "Псевдоним",
+          "type": "identifier",
+          "required": true,
+          "default_value": "Т"
+        },
+        {
+          "name": "HasCondition",
+          "display_name": "Есть условие",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "Condition",
+          "display_name": "Условие",
+          "type": "condition",
+          "required": false
+        }
+      ],
+      "tags": ["select", "group", "группировка", "агрегация", "сумма", "количество"],
+      "use_cases": ["Итоги по группам", "Подсчёт количества", "Суммирование"]
+    },
+    {
+      "id": "query.register_slice_last",
+      "name": "Information Register Slice Last",
+      "name_ru": "Срез последних регистра сведений",
+      "description": "Query slice of last values from information register",
+      "description_ru": "Запрос среза последних значений регистра сведений",
+      "category": "query",
+      "template_code": "ВЫБРАТЬ\n\t${Fields}\nИЗ\n\tРегистрСведений.${RegisterName}.СрезПоследних(&Период, ${FilterCondition}) КАК ${Alias}",
+      "placeholders": [
+        {
+          "name": "Fields",
+          "display_name": "Поля",
+          "description": "Список полей для выборки",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "RegisterName",
+          "display_name": "Имя регистра",
+          "description": "Имя регистра сведений",
+          "type": "metadata_name",
+          "required": true,
+          "metadata_type": "InformationRegister"
+        },
+        {
+          "name": "FilterCondition",
+          "display_name": "Условие отбора",
+          "description": "Условие отбора в виртуальной таблице",
+          "type": "condition",
+          "required": false,
+          "default_value": ""
+        },
+        {
+          "name": "Alias",
+          "display_name": "Псевдоним",
+          "type": "identifier",
+          "required": true,
+          "default_value": "Срез"
+        }
+      ],
+      "tags": ["register", "slice", "регистр сведений", "срез последних", "периодический"],
+      "use_cases": ["Актуальные значения", "Курсы валют", "Цены номенклатуры"]
+    },
+    {
+      "id": "query.accumulation_balance",
+      "name": "Accumulation Register Balance",
+      "name_ru": "Остатки регистра накопления",
+      "description": "Query balance from accumulation register",
+      "description_ru": "Запрос остатков регистра накопления",
+      "category": "query",
+      "template_code": "ВЫБРАТЬ\n\t${Dimensions},\n\t${Resources}\nИЗ\n\tРегистрНакопления.${RegisterName}.Остатки(&Период, ${FilterCondition}) КАК ${Alias}",
+      "placeholders": [
+        {
+          "name": "Dimensions",
+          "display_name": "Измерения",
+          "description": "Измерения регистра",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "Resources",
+          "display_name": "Ресурсы",
+          "description": "Ресурсы регистра (остатки)",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "RegisterName",
+          "display_name": "Имя регистра",
+          "description": "Имя регистра накопления",
+          "type": "metadata_name",
+          "required": true,
+          "metadata_type": "AccumulationRegister"
+        },
+        {
+          "name": "FilterCondition",
+          "display_name": "Условие отбора",
+          "type": "condition",
+          "required": false,
+          "default_value": ""
+        },
+        {
+          "name": "Alias",
+          "display_name": "Псевдоним",
+          "type": "identifier",
+          "required": true,
+          "default_value": "Остатки"
+        }
+      ],
+      "tags": ["register", "balance", "регистр накопления", "остатки", "складские остатки"],
+      "use_cases": ["Остатки товаров", "Остатки на счетах", "Текущие остатки"]
+    },
+    {
+      "id": "query.accumulation_turnovers",
+      "name": "Accumulation Register Turnovers",
+      "name_ru": "Обороты регистра накопления",
+      "description": "Query turnovers from accumulation register",
+      "description_ru": "Запрос оборотов регистра накопления",
+      "category": "query",
+      "template_code": "ВЫБРАТЬ\n\t${Dimensions},\n\t${TurnoverResources}\nИЗ\n\tРегистрНакопления.${RegisterName}.Обороты(&НачалоПериода, &КонецПериода, ${Periodicity}, ${FilterCondition}) КАК ${Alias}",
+      "placeholders": [
+        {
+          "name": "Dimensions",
+          "display_name": "Измерения",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "TurnoverResources",
+          "display_name": "Ресурсы оборотов",
+          "description": "Ресурсы оборотов (Приход, Расход, Оборот)",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "RegisterName",
+          "display_name": "Имя регистра",
+          "type": "metadata_name",
+          "required": true,
+          "metadata_type": "AccumulationRegister"
+        },
+        {
+          "name": "Periodicity",
+          "display_name": "Периодичность",
+          "description": "Периодичность оборотов",
+          "type": "string",
+          "required": false,
+          "default_value": "Авто",
+          "allowed_values": ["Авто", "День", "Неделя", "Месяц", "Квартал", "Год"]
+        },
+        {
+          "name": "FilterCondition",
+          "display_name": "Условие отбора",
+          "type": "condition",
+          "required": false,
+          "default_value": ""
+        },
+        {
+          "name": "Alias",
+          "display_name": "Псевдоним",
+          "type": "identifier",
+          "required": true,
+          "default_value": "Обороты"
+        }
+      ],
+      "tags": ["register", "turnovers", "регистр накопления", "обороты", "движения"],
+      "use_cases": ["Анализ оборотов", "Отчёт по движениям", "Обороты за период"]
+    },
+    {
+      "id": "query.batch_query",
+      "name": "Batch Query with Temp Table",
+      "name_ru": "Пакетный запрос с временной таблицей",
+      "description": "Batch query using temporary table",
+      "description_ru": "Пакетный запрос с использованием временной таблицы",
+      "category": "query",
+      "template_code": "ВЫБРАТЬ\n\t${TempFields}\nПОМЕСТИТЬ ${TempTableName}\nИЗ\n\t${SourceTable} КАК Источник{{#if HasCondition}}\nГДЕ\n\t${TempCondition}{{/if}}\n;\n\n////////////////////////////////////////////////////////////////////////////////\nВЫБРАТЬ\n\t${ResultFields}\nИЗ\n\t${TempTableName} КАК ВТ\n\tЛЕВОЕ СОЕДИНЕНИЕ ${JoinTable} КАК ${JoinAlias}\n\tПО ВТ.${JoinField} = ${JoinAlias}.Ссылка",
+      "placeholders": [
+        {
+          "name": "TempFields",
+          "display_name": "Поля временной таблицы",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "TempTableName",
+          "display_name": "Имя временной таблицы",
+          "type": "identifier",
+          "required": true,
+          "default_value": "ВТДанные"
+        },
+        {
+          "name": "SourceTable",
+          "display_name": "Исходная таблица",
+          "type": "table_name",
+          "required": true
+        },
+        {
+          "name": "HasCondition",
+          "display_name": "Есть условие",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "TempCondition",
+          "display_name": "Условие отбора",
+          "type": "condition",
+          "required": false
+        },
+        {
+          "name": "ResultFields",
+          "display_name": "Поля результата",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "JoinTable",
+          "display_name": "Таблица соединения",
+          "type": "table_name",
+          "required": true
+        },
+        {
+          "name": "JoinAlias",
+          "display_name": "Псевдоним соединения",
+          "type": "identifier",
+          "required": true,
+          "default_value": "Данные"
+        },
+        {
+          "name": "JoinField",
+          "display_name": "Поле соединения",
+          "type": "identifier",
+          "required": true
+        }
+      ],
+      "tags": ["batch", "temp table", "пакетный", "временная таблица", "оптимизация"],
+      "use_cases": ["Оптимизация запросов", "Сложные выборки", "Многошаговые запросы"]
+    },
+    {
+      "id": "query.select_top",
+      "name": "SELECT TOP N",
+      "name_ru": "Выборка первых N записей",
+      "description": "SELECT first N records",
+      "description_ru": "Выборка первых N записей с сортировкой",
+      "category": "query",
+      "template_code": "ВЫБРАТЬ ПЕРВЫЕ ${Count}\n\t${Fields}\nИЗ\n\t${TableName} КАК ${Alias}{{#if HasCondition}}\nГДЕ\n\t${Condition}{{/if}}\nУПОРЯДОЧИТЬ ПО\n\t${OrderField} ${OrderDirection}",
+      "placeholders": [
+        {
+          "name": "Count",
+          "display_name": "Количество",
+          "description": "Количество записей",
+          "type": "integer",
+          "required": true,
+          "default_value": "10"
+        },
+        {
+          "name": "Fields",
+          "display_name": "Поля",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "TableName",
+          "display_name": "Таблица",
+          "type": "table_name",
+          "required": true
+        },
+        {
+          "name": "Alias",
+          "display_name": "Псевдоним",
+          "type": "identifier",
+          "required": true,
+          "default_value": "Т"
+        },
+        {
+          "name": "HasCondition",
+          "display_name": "Есть условие",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "Condition",
+          "display_name": "Условие",
+          "type": "condition",
+          "required": false
+        },
+        {
+          "name": "OrderField",
+          "display_name": "Поле сортировки",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "OrderDirection",
+          "display_name": "Направление",
+          "type": "string",
+          "required": true,
+          "default_value": "УБЫВ",
+          "allowed_values": ["ВОЗР", "УБЫВ"]
+        }
+      ],
+      "tags": ["select", "top", "первые", "ограничение", "limit"],
+      "use_cases": ["Последние документы", "Топ записей", "Ограничение выборки"]
+    },
+    {
+      "id": "query.select_distinct",
+      "name": "SELECT DISTINCT",
+      "name_ru": "Выборка уникальных значений",
+      "description": "SELECT unique values",
+      "description_ru": "Выборка уникальных (различных) значений",
+      "category": "query",
+      "template_code": "ВЫБРАТЬ РАЗЛИЧНЫЕ\n\t${Fields}\nИЗ\n\t${TableName} КАК ${Alias}{{#if HasCondition}}\nГДЕ\n\t${Condition}{{/if}}",
+      "placeholders": [
+        {
+          "name": "Fields",
+          "display_name": "Поля",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "TableName",
+          "display_name": "Таблица",
+          "type": "table_name",
+          "required": true
+        },
+        {
+          "name": "Alias",
+          "display_name": "Псевдоним",
+          "type": "identifier",
+          "required": true,
+          "default_value": "Т"
+        },
+        {
+          "name": "HasCondition",
+          "display_name": "Есть условие",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "Condition",
+          "display_name": "Условие",
+          "type": "condition",
+          "required": false
+        }
+      ],
+      "tags": ["select", "distinct", "различные", "уникальные"],
+      "use_cases": ["Уникальные значения", "Список без дубликатов"]
+    },
+    {
+      "id": "query.union",
+      "name": "UNION Query",
+      "name_ru": "Объединение запросов",
+      "description": "Union of two queries",
+      "description_ru": "Объединение двух запросов",
+      "category": "query",
+      "template_code": "ВЫБРАТЬ\n\t${Fields1}\nИЗ\n\t${Table1} КАК Т1{{#if HasCondition1}}\nГДЕ\n\t${Condition1}{{/if}}\n\nОБЪЕДИНИТЬ ВСЕ\n\nВЫБРАТЬ\n\t${Fields2}\nИЗ\n\t${Table2} КАК Т2{{#if HasCondition2}}\nГДЕ\n\t${Condition2}{{/if}}",
+      "placeholders": [
+        {
+          "name": "Fields1",
+          "display_name": "Поля первого запроса",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "Table1",
+          "display_name": "Таблица первого запроса",
+          "type": "table_name",
+          "required": true
+        },
+        {
+          "name": "HasCondition1",
+          "display_name": "Условие первого",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "Condition1",
+          "display_name": "Условие 1",
+          "type": "condition",
+          "required": false
+        },
+        {
+          "name": "Fields2",
+          "display_name": "Поля второго запроса",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "Table2",
+          "display_name": "Таблица второго запроса",
+          "type": "table_name",
+          "required": true
+        },
+        {
+          "name": "HasCondition2",
+          "display_name": "Условие второго",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "Condition2",
+          "display_name": "Условие 2",
+          "type": "condition",
+          "required": false
+        }
+      ],
+      "tags": ["union", "объединение", "combine"],
+      "use_cases": ["Объединение данных", "Комбинирование источников"]
+    },
+    {
+      "id": "query.subquery_in",
+      "name": "Subquery with IN",
+      "name_ru": "Вложенный запрос с IN",
+      "description": "Query with subquery in WHERE IN clause",
+      "description_ru": "Запрос с вложенным запросом в условии IN",
+      "category": "query",
+      "template_code": "ВЫБРАТЬ\n\t${Fields}\nИЗ\n\t${TableName} КАК ${Alias}\nГДЕ\n\t${Alias}.${FilterField} В\n\t\t(ВЫБРАТЬ\n\t\t\t${SubField}\n\t\tИЗ\n\t\t\t${SubTable} КАК Подзапрос\n\t\tГДЕ\n\t\t\t${SubCondition})",
+      "placeholders": [
+        {
+          "name": "Fields",
+          "display_name": "Поля",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "TableName",
+          "display_name": "Основная таблица",
+          "type": "table_name",
+          "required": true
+        },
+        {
+          "name": "Alias",
+          "display_name": "Псевдоним",
+          "type": "identifier",
+          "required": true,
+          "default_value": "Т"
+        },
+        {
+          "name": "FilterField",
+          "display_name": "Поле фильтра",
+          "description": "Поле для проверки IN",
+          "type": "identifier",
+          "required": true
+        },
+        {
+          "name": "SubField",
+          "display_name": "Поле подзапроса",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "SubTable",
+          "display_name": "Таблица подзапроса",
+          "type": "table_name",
+          "required": true
+        },
+        {
+          "name": "SubCondition",
+          "display_name": "Условие подзапроса",
+          "type": "condition",
+          "required": true
+        }
+      ],
+      "tags": ["subquery", "in", "вложенный", "подзапрос"],
+      "use_cases": ["Фильтрация по списку", "Связанные данные"]
+    },
+    {
+      "id": "query.full_text_search",
+      "name": "Full-text Search",
+      "name_ru": "Полнотекстовый поиск",
+      "description": "Query with full-text search",
+      "description_ru": "Запрос с полнотекстовым поиском",
+      "category": "query",
+      "template_code": "ВЫБРАТЬ\n\t${Fields}\nИЗ\n\t${TableName} КАК ${Alias}\nГДЕ\n\t${SearchField} ПОДОБНО \"%\" + &СтрокаПоиска + \"%\"",
+      "placeholders": [
+        {
+          "name": "Fields",
+          "display_name": "Поля",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "TableName",
+          "display_name": "Таблица",
+          "type": "table_name",
+          "required": true
+        },
+        {
+          "name": "Alias",
+          "display_name": "Псевдоним",
+          "type": "identifier",
+          "required": true,
+          "default_value": "Т"
+        },
+        {
+          "name": "SearchField",
+          "display_name": "Поле поиска",
+          "description": "Поле для поиска (обычно Наименование)",
+          "type": "identifier",
+          "required": true,
+          "default_value": "Наименование"
+        }
+      ],
+      "tags": ["search", "like", "поиск", "подобно", "текстовый"],
+      "use_cases": ["Поиск по названию", "Фильтрация по тексту"]
+    }
+  ]
+}

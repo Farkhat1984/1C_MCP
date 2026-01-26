@@ -1,0 +1,253 @@
+{
+  "version": "8.3.24",
+  "types": [
+    {
+      "name": "Массив",
+      "name_en": "Array",
+      "description": "Коллекция значений с доступом по индексу",
+      "category": "collection",
+      "constructors": [
+        {"name": "Новый Массив", "name_en": "New Array", "parameters": [{"name": "РазмерN", "types": ["Число"], "required": false}]}
+      ],
+      "methods": [
+        {"name": "Добавить", "name_en": "Add", "description": "Добавляет элемент в конец массива", "parameters": [{"name": "Значение", "types": ["Произвольный"], "required": true}], "return_types": []},
+        {"name": "Вставить", "name_en": "Insert", "description": "Вставляет элемент по индексу", "parameters": [{"name": "Индекс", "types": ["Число"], "required": true}, {"name": "Значение", "types": ["Произвольный"], "required": true}], "return_types": []},
+        {"name": "Удалить", "name_en": "Delete", "description": "Удаляет элемент по индексу", "parameters": [{"name": "Индекс", "types": ["Число"], "required": true}], "return_types": []},
+        {"name": "Очистить", "name_en": "Clear", "description": "Удаляет все элементы", "parameters": [], "return_types": []},
+        {"name": "Количество", "name_en": "Count", "description": "Возвращает количество элементов", "parameters": [], "return_types": ["Число"]},
+        {"name": "Найти", "name_en": "Find", "description": "Ищет элемент и возвращает индекс", "parameters": [{"name": "Значение", "types": ["Произвольный"], "required": true}], "return_types": ["Число", "Неопределено"]},
+        {"name": "Получить", "name_en": "Get", "description": "Получает элемент по индексу", "parameters": [{"name": "Индекс", "types": ["Число"], "required": true}], "return_types": ["Произвольный"]},
+        {"name": "Установить", "name_en": "Set", "description": "Устанавливает элемент по индексу", "parameters": [{"name": "Индекс", "types": ["Число"], "required": true}, {"name": "Значение", "types": ["Произвольный"], "required": true}], "return_types": []},
+        {"name": "ВГраница", "name_en": "UBound", "description": "Возвращает верхнюю границу массива", "parameters": [], "return_types": ["Число"]}
+      ],
+      "properties": []
+    },
+    {
+      "name": "Структура",
+      "name_en": "Structure",
+      "description": "Коллекция пар ключ-значение",
+      "category": "structure",
+      "constructors": [
+        {"name": "Новый Структура", "name_en": "New Structure", "parameters": [{"name": "Ключи", "types": ["Строка"], "required": false}, {"name": "Значения", "types": ["Произвольный"], "required": false}]}
+      ],
+      "methods": [
+        {"name": "Вставить", "name_en": "Insert", "description": "Добавляет или обновляет значение по ключу", "parameters": [{"name": "Ключ", "types": ["Строка"], "required": true}, {"name": "Значение", "types": ["Произвольный"], "required": false}], "return_types": []},
+        {"name": "Удалить", "name_en": "Delete", "description": "Удаляет значение по ключу", "parameters": [{"name": "Ключ", "types": ["Строка"], "required": true}], "return_types": []},
+        {"name": "Очистить", "name_en": "Clear", "description": "Удаляет все элементы", "parameters": [], "return_types": []},
+        {"name": "Количество", "name_en": "Count", "description": "Возвращает количество элементов", "parameters": [], "return_types": ["Число"]},
+        {"name": "Свойство", "name_en": "Property", "description": "Проверяет наличие ключа и получает значение", "parameters": [{"name": "Ключ", "types": ["Строка"], "required": true}, {"name": "Значение", "types": ["Произвольный"], "required": false, "direction": "out"}], "return_types": ["Булево"]}
+      ],
+      "properties": []
+    },
+    {
+      "name": "Соответствие",
+      "name_en": "Map",
+      "description": "Коллекция пар ключ-значение с произвольными ключами",
+      "category": "collection",
+      "constructors": [
+        {"name": "Новый Соответствие", "name_en": "New Map", "parameters": []}
+      ],
+      "methods": [
+        {"name": "Вставить", "name_en": "Insert", "description": "Добавляет или обновляет значение по ключу", "parameters": [{"name": "Ключ", "types": ["Произвольный"], "required": true}, {"name": "Значение", "types": ["Произвольный"], "required": true}], "return_types": []},
+        {"name": "Удалить", "name_en": "Delete", "description": "Удаляет значение по ключу", "parameters": [{"name": "Ключ", "types": ["Произвольный"], "required": true}], "return_types": []},
+        {"name": "Очистить", "name_en": "Clear", "description": "Удаляет все элементы", "parameters": [], "return_types": []},
+        {"name": "Количество", "name_en": "Count", "description": "Возвращает количество элементов", "parameters": [], "return_types": ["Число"]},
+        {"name": "Получить", "name_en": "Get", "description": "Получает значение по ключу", "parameters": [{"name": "Ключ", "types": ["Произвольный"], "required": true}], "return_types": ["Произвольный"]}
+      ],
+      "properties": []
+    },
+    {
+      "name": "ТаблицаЗначений",
+      "name_en": "ValueTable",
+      "description": "Таблица значений с колонками и строками",
+      "category": "value_table",
+      "constructors": [
+        {"name": "Новый ТаблицаЗначений", "name_en": "New ValueTable", "parameters": []}
+      ],
+      "methods": [
+        {"name": "Добавить", "name_en": "Add", "description": "Добавляет новую строку", "parameters": [], "return_types": ["СтрокаТаблицыЗначений"]},
+        {"name": "Вставить", "name_en": "Insert", "description": "Вставляет строку по индексу", "parameters": [{"name": "Индекс", "types": ["Число"], "required": true}], "return_types": ["СтрокаТаблицыЗначений"]},
+        {"name": "Удалить", "name_en": "Delete", "description": "Удаляет строку", "parameters": [{"name": "Строка", "types": ["СтрокаТаблицыЗначений", "Число"], "required": true}], "return_types": []},
+        {"name": "Очистить", "name_en": "Clear", "description": "Удаляет все строки", "parameters": [], "return_types": []},
+        {"name": "Количество", "name_en": "Count", "description": "Возвращает количество строк", "parameters": [], "return_types": ["Число"]},
+        {"name": "Получить", "name_en": "Get", "description": "Получает строку по индексу", "parameters": [{"name": "Индекс", "types": ["Число"], "required": true}], "return_types": ["СтрокаТаблицыЗначений"]},
+        {"name": "Найти", "name_en": "Find", "description": "Ищет строку по значению колонки", "parameters": [{"name": "Значение", "types": ["Произвольный"], "required": true}, {"name": "Колонки", "types": ["Строка"], "required": false}], "return_types": ["СтрокаТаблицыЗначений", "Неопределено"]},
+        {"name": "НайтиСтроки", "name_en": "FindRows", "description": "Ищет строки по условию", "parameters": [{"name": "Отбор", "types": ["Структура"], "required": true}], "return_types": ["Массив"]},
+        {"name": "Сортировать", "name_en": "Sort", "description": "Сортирует таблицу", "parameters": [{"name": "Колонки", "types": ["Строка"], "required": true}, {"name": "ОбъектСравнения", "types": ["СравнениеЗначений"], "required": false}], "return_types": []},
+        {"name": "Свернуть", "name_en": "GroupBy", "description": "Сворачивает таблицу с группировкой", "parameters": [{"name": "КолонкиГруппировок", "types": ["Строка"], "required": true}, {"name": "КолонкиСуммирования", "types": ["Строка"], "required": false}], "return_types": []},
+        {"name": "Скопировать", "name_en": "Copy", "description": "Копирует таблицу", "parameters": [{"name": "Строки", "types": ["Массив"], "required": false}, {"name": "Колонки", "types": ["Строка"], "required": false}], "return_types": ["ТаблицаЗначений"]},
+        {"name": "ВыгрузитьКолонку", "name_en": "UnloadColumn", "description": "Выгружает колонку в массив", "parameters": [{"name": "Колонка", "types": ["Строка", "Число"], "required": true}], "return_types": ["Массив"]},
+        {"name": "ЗагрузитьКолонку", "name_en": "LoadColumn", "description": "Загружает массив в колонку", "parameters": [{"name": "Массив", "types": ["Массив"], "required": true}, {"name": "Колонка", "types": ["Строка", "Число"], "required": true}], "return_types": []},
+        {"name": "Итог", "name_en": "Total", "description": "Вычисляет итог по колонке", "parameters": [{"name": "Колонка", "types": ["Строка", "Число"], "required": true}], "return_types": ["Число"]},
+        {"name": "Индекс", "name_en": "IndexOf", "description": "Возвращает индекс строки", "parameters": [{"name": "Строка", "types": ["СтрокаТаблицыЗначений"], "required": true}], "return_types": ["Число"]},
+        {"name": "Сдвинуть", "name_en": "Move", "description": "Сдвигает строку", "parameters": [{"name": "Строка", "types": ["СтрокаТаблицыЗначений", "Число"], "required": true}, {"name": "Смещение", "types": ["Число"], "required": true}], "return_types": []},
+        {"name": "ЗаполнитьЗначения", "name_en": "FillValues", "description": "Заполняет колонку значением", "parameters": [{"name": "Значение", "types": ["Произвольный"], "required": true}, {"name": "Колонки", "types": ["Строка"], "required": false}], "return_types": []}
+      ],
+      "properties": [
+        {"name": "Колонки", "name_en": "Columns", "description": "Коллекция колонок таблицы", "types": ["КоллекцияКолонокТаблицыЗначений"], "readable": true, "writable": false},
+        {"name": "Индексы", "name_en": "Indexes", "description": "Коллекция индексов таблицы", "types": ["ИндексыТаблицыЗначений"], "readable": true, "writable": false}
+      ]
+    },
+    {
+      "name": "ДеревоЗначений",
+      "name_en": "ValueTree",
+      "description": "Иерархическая структура данных",
+      "category": "value_tree",
+      "constructors": [
+        {"name": "Новый ДеревоЗначений", "name_en": "New ValueTree", "parameters": []}
+      ],
+      "methods": [
+        {"name": "Количество", "name_en": "Count", "description": "Возвращает количество строк верхнего уровня", "parameters": [], "return_types": ["Число"]},
+        {"name": "Очистить", "name_en": "Clear", "description": "Удаляет все строки", "parameters": [], "return_types": []},
+        {"name": "Получить", "name_en": "Get", "description": "Получает строку по индексу", "parameters": [{"name": "Индекс", "types": ["Число"], "required": true}], "return_types": ["СтрокаДереваЗначений"]}
+      ],
+      "properties": [
+        {"name": "Колонки", "name_en": "Columns", "description": "Коллекция колонок дерева", "types": ["КоллекцияКолонокДереваЗначений"], "readable": true, "writable": false},
+        {"name": "Строки", "name_en": "Rows", "description": "Строки верхнего уровня", "types": ["КоллекцияСтрокДереваЗначений"], "readable": true, "writable": false}
+      ]
+    },
+    {
+      "name": "СписокЗначений",
+      "name_en": "ValueList",
+      "description": "Список значений с представлениями",
+      "category": "collection",
+      "constructors": [
+        {"name": "Новый СписокЗначений", "name_en": "New ValueList", "parameters": []}
+      ],
+      "methods": [
+        {"name": "Добавить", "name_en": "Add", "description": "Добавляет элемент", "parameters": [{"name": "Значение", "types": ["Произвольный"], "required": true}, {"name": "Представление", "types": ["Строка"], "required": false}, {"name": "Пометка", "types": ["Булево"], "required": false}, {"name": "Картинка", "types": ["Картинка"], "required": false}], "return_types": ["ЭлементСпискаЗначений"]},
+        {"name": "Вставить", "name_en": "Insert", "description": "Вставляет элемент по индексу", "parameters": [{"name": "Индекс", "types": ["Число"], "required": true}, {"name": "Значение", "types": ["Произвольный"], "required": true}], "return_types": ["ЭлементСпискаЗначений"]},
+        {"name": "Удалить", "name_en": "Delete", "description": "Удаляет элемент", "parameters": [{"name": "Элемент", "types": ["ЭлементСпискаЗначений", "Число"], "required": true}], "return_types": []},
+        {"name": "Очистить", "name_en": "Clear", "description": "Удаляет все элементы", "parameters": [], "return_types": []},
+        {"name": "Количество", "name_en": "Count", "description": "Возвращает количество элементов", "parameters": [], "return_types": ["Число"]},
+        {"name": "Найти", "name_en": "Find", "description": "Ищет элемент по значению", "parameters": [{"name": "Значение", "types": ["Произвольный"], "required": true}], "return_types": ["ЭлементСпискаЗначений", "Неопределено"]},
+        {"name": "НайтиПоЗначению", "name_en": "FindByValue", "description": "Ищет элемент по значению", "parameters": [{"name": "Значение", "types": ["Произвольный"], "required": true}], "return_types": ["ЭлементСпискаЗначений", "Неопределено"]},
+        {"name": "НайтиПоИдентификатору", "name_en": "FindByID", "description": "Ищет элемент по идентификатору", "parameters": [{"name": "Идентификатор", "types": ["Число"], "required": true}], "return_types": ["ЭлементСпискаЗначений", "Неопределено"]},
+        {"name": "Сортировать", "name_en": "Sort", "description": "Сортирует список", "parameters": [{"name": "Направление", "types": ["НаправлениеСортировки"], "required": false}, {"name": "ОбъектСравнения", "types": ["СравнениеЗначений"], "required": false}], "return_types": []},
+        {"name": "ВыбратьЭлемент", "name_en": "ChooseItem", "description": "Показывает диалог выбора", "parameters": [{"name": "Заголовок", "types": ["Строка"], "required": false}, {"name": "Элемент", "types": ["ЭлементСпискаЗначений"], "required": false}], "return_types": ["ЭлементСпискаЗначений", "Неопределено"]},
+        {"name": "ОтметитьЭлементы", "name_en": "CheckItems", "description": "Показывает диалог множественного выбора", "parameters": [{"name": "Заголовок", "types": ["Строка"], "required": false}], "return_types": ["Булево"]},
+        {"name": "ВыгрузитьЗначения", "name_en": "UnloadValues", "description": "Выгружает значения в массив", "parameters": [], "return_types": ["Массив"]},
+        {"name": "ЗагрузитьЗначения", "name_en": "LoadValues", "description": "Загружает значения из массива", "parameters": [{"name": "Массив", "types": ["Массив"], "required": true}], "return_types": []}
+      ],
+      "properties": []
+    },
+    {
+      "name": "Запрос",
+      "name_en": "Query",
+      "description": "Запрос к информационной базе",
+      "category": "query",
+      "constructors": [
+        {"name": "Новый Запрос", "name_en": "New Query", "parameters": [{"name": "Текст", "types": ["Строка"], "required": false}]}
+      ],
+      "methods": [
+        {"name": "Выполнить", "name_en": "Execute", "description": "Выполняет запрос", "parameters": [], "return_types": ["РезультатЗапроса"]},
+        {"name": "ВыполнитьПакет", "name_en": "ExecuteBatch", "description": "Выполняет пакет запросов", "parameters": [], "return_types": ["Массив"]},
+        {"name": "УстановитьПараметр", "name_en": "SetParameter", "description": "Устанавливает параметр запроса", "parameters": [{"name": "Имя", "types": ["Строка"], "required": true}, {"name": "Значение", "types": ["Произвольный"], "required": true}], "return_types": []},
+        {"name": "НайтиПараметры", "name_en": "FindParameters", "description": "Ищет параметры в тексте запроса", "parameters": [], "return_types": ["Массив"]}
+      ],
+      "properties": [
+        {"name": "Текст", "name_en": "Text", "description": "Текст запроса", "types": ["Строка"], "readable": true, "writable": true},
+        {"name": "Параметры", "name_en": "Parameters", "description": "Параметры запроса", "types": ["Структура"], "readable": true, "writable": false},
+        {"name": "МенеджерВременныхТаблиц", "name_en": "TempTablesManager", "description": "Менеджер временных таблиц", "types": ["МенеджерВременныхТаблиц"], "readable": true, "writable": true}
+      ]
+    },
+    {
+      "name": "РезультатЗапроса",
+      "name_en": "QueryResult",
+      "description": "Результат выполнения запроса",
+      "category": "query",
+      "methods": [
+        {"name": "Выбрать", "name_en": "Select", "description": "Получает выборку из результата", "parameters": [{"name": "ТипОбхода", "types": ["ОбходРезультатаЗапроса"], "required": false}, {"name": "Группировки", "types": ["Строка"], "required": false}, {"name": "ГруппировкиДляЗначенийГруппировок", "types": ["Строка"], "required": false}], "return_types": ["ВыборкаИзРезультатаЗапроса"]},
+        {"name": "Выгрузить", "name_en": "Unload", "description": "Выгружает результат в таблицу значений", "parameters": [{"name": "ТипОбхода", "types": ["ОбходРезультатаЗапроса"], "required": false}], "return_types": ["ТаблицаЗначений"]},
+        {"name": "Пустой", "name_en": "IsEmpty", "description": "Проверяет, пуст ли результат", "parameters": [], "return_types": ["Булево"]}
+      ],
+      "properties": [
+        {"name": "Колонки", "name_en": "Columns", "description": "Колонки результата", "types": ["КоллекцияКолонокРезультатаЗапроса"], "readable": true, "writable": false}
+      ]
+    },
+    {
+      "name": "ТекстовыйДокумент",
+      "name_en": "TextDocument",
+      "description": "Текстовый документ",
+      "category": "file",
+      "constructors": [
+        {"name": "Новый ТекстовыйДокумент", "name_en": "New TextDocument", "parameters": []}
+      ],
+      "methods": [
+        {"name": "Прочитать", "name_en": "Read", "description": "Читает файл", "parameters": [{"name": "ИмяФайла", "types": ["Строка"], "required": true}, {"name": "Кодировка", "types": ["КодировкаТекста", "Строка"], "required": false}], "return_types": []},
+        {"name": "Записать", "name_en": "Write", "description": "Записывает в файл", "parameters": [{"name": "ИмяФайла", "types": ["Строка"], "required": true}, {"name": "Кодировка", "types": ["КодировкаТекста", "Строка"], "required": false}], "return_types": []},
+        {"name": "ПолучитьТекст", "name_en": "GetText", "description": "Получает весь текст", "parameters": [], "return_types": ["Строка"]},
+        {"name": "УстановитьТекст", "name_en": "SetText", "description": "Устанавливает текст", "parameters": [{"name": "Текст", "types": ["Строка"], "required": true}], "return_types": []},
+        {"name": "ДобавитьСтроку", "name_en": "AddLine", "description": "Добавляет строку в конец", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}], "return_types": []},
+        {"name": "ВставитьСтроку", "name_en": "InsertLine", "description": "Вставляет строку по номеру", "parameters": [{"name": "НомерСтроки", "types": ["Число"], "required": true}, {"name": "Строка", "types": ["Строка"], "required": true}], "return_types": []},
+        {"name": "УдалитьСтроку", "name_en": "DeleteLine", "description": "Удаляет строку по номеру", "parameters": [{"name": "НомерСтроки", "types": ["Число"], "required": true}], "return_types": []},
+        {"name": "ЗаменитьСтроку", "name_en": "ReplaceLine", "description": "Заменяет строку", "parameters": [{"name": "НомерСтроки", "types": ["Число"], "required": true}, {"name": "Строка", "types": ["Строка"], "required": true}], "return_types": []},
+        {"name": "ПолучитьСтроку", "name_en": "GetLine", "description": "Получает строку по номеру", "parameters": [{"name": "НомерСтроки", "types": ["Число"], "required": true}], "return_types": ["Строка"]},
+        {"name": "КоличествоСтрок", "name_en": "LineCount", "description": "Возвращает количество строк", "parameters": [], "return_types": ["Число"]},
+        {"name": "Очистить", "name_en": "Clear", "description": "Очищает документ", "parameters": [], "return_types": []},
+        {"name": "Показать", "name_en": "Show", "description": "Показывает документ", "parameters": [{"name": "Заголовок", "types": ["Строка"], "required": false}], "return_types": []}
+      ],
+      "properties": []
+    },
+    {
+      "name": "ТабличныйДокумент",
+      "name_en": "SpreadsheetDocument",
+      "description": "Табличный документ (MXL)",
+      "category": "drawing",
+      "constructors": [
+        {"name": "Новый ТабличныйДокумент", "name_en": "New SpreadsheetDocument", "parameters": []}
+      ],
+      "methods": [
+        {"name": "Вывести", "name_en": "Put", "description": "Выводит область в документ", "parameters": [{"name": "Область", "types": ["ОбластьЯчеекТабличногоДокумента"], "required": true}, {"name": "Уровень", "types": ["Число"], "required": false}], "return_types": ["ОбластьЯчеекТабличногоДокумента"]},
+        {"name": "Присоединить", "name_en": "Join", "description": "Присоединяет область справа", "parameters": [{"name": "Область", "types": ["ОбластьЯчеекТабличногоДокумента"], "required": true}, {"name": "Уровень", "types": ["Число"], "required": false}], "return_types": ["ОбластьЯчеекТабличногоДокумента"]},
+        {"name": "ПолучитьОбласть", "name_en": "GetArea", "description": "Получает именованную область", "parameters": [{"name": "ИмяОбласти", "types": ["Строка"], "required": true}], "return_types": ["ОбластьЯчеекТабличногоДокумента"]},
+        {"name": "Записать", "name_en": "Write", "description": "Записывает в файл", "parameters": [{"name": "ИмяФайла", "types": ["Строка"], "required": true}, {"name": "ТипФайла", "types": ["ТипФайлаТабличногоДокумента"], "required": false}], "return_types": []},
+        {"name": "Прочитать", "name_en": "Read", "description": "Читает из файла", "parameters": [{"name": "ИмяФайла", "types": ["Строка"], "required": true}], "return_types": []},
+        {"name": "Очистить", "name_en": "Clear", "description": "Очищает документ", "parameters": [], "return_types": []},
+        {"name": "Показать", "name_en": "Show", "description": "Показывает документ", "parameters": [{"name": "Заголовок", "types": ["Строка"], "required": false}], "return_types": []},
+        {"name": "Напечатать", "name_en": "Print", "description": "Печатает документ", "parameters": [{"name": "РежимПечати", "types": ["РежимИспользованияДиалогаПечати"], "required": false}], "return_types": []}
+      ],
+      "properties": [
+        {"name": "ВысотаТаблицы", "name_en": "TableHeight", "description": "Количество строк", "types": ["Число"], "readable": true, "writable": false},
+        {"name": "ШиринаТаблицы", "name_en": "TableWidth", "description": "Количество колонок", "types": ["Число"], "readable": true, "writable": false},
+        {"name": "Параметры", "name_en": "Parameters", "description": "Параметры документа", "types": ["Структура"], "readable": true, "writable": false}
+      ]
+    },
+    {
+      "name": "HTTPЗапрос",
+      "name_en": "HTTPRequest",
+      "description": "HTTP-запрос",
+      "category": "http",
+      "constructors": [
+        {"name": "Новый HTTPЗапрос", "name_en": "New HTTPRequest", "parameters": [{"name": "АдресРесурса", "types": ["Строка"], "required": false}, {"name": "Заголовки", "types": ["Соответствие"], "required": false}]}
+      ],
+      "methods": [
+        {"name": "УстановитьТелоИзСтроки", "name_en": "SetBodyFromString", "description": "Устанавливает тело из строки", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}, {"name": "Кодировка", "types": ["КодировкаТекста"], "required": false}], "return_types": []},
+        {"name": "ПолучитьТелоКакСтроку", "name_en": "GetBodyAsString", "description": "Получает тело как строку", "parameters": [{"name": "Кодировка", "types": ["КодировкаТекста"], "required": false}], "return_types": ["Строка"]},
+        {"name": "УстановитьТелоИзДвоичныхДанных", "name_en": "SetBodyFromBinaryData", "description": "Устанавливает тело из двоичных данных", "parameters": [{"name": "Данные", "types": ["ДвоичныеДанные"], "required": true}], "return_types": []},
+        {"name": "ПолучитьТелоКакДвоичныеДанные", "name_en": "GetBodyAsBinaryData", "description": "Получает тело как двоичные данные", "parameters": [], "return_types": ["ДвоичныеДанные"]}
+      ],
+      "properties": [
+        {"name": "АдресРесурса", "name_en": "ResourceAddress", "types": ["Строка"], "readable": true, "writable": true},
+        {"name": "Заголовки", "name_en": "Headers", "types": ["Соответствие"], "readable": true, "writable": false}
+      ]
+    },
+    {
+      "name": "HTTPСоединение",
+      "name_en": "HTTPConnection",
+      "description": "HTTP-соединение",
+      "category": "http",
+      "constructors": [
+        {"name": "Новый HTTPСоединение", "name_en": "New HTTPConnection", "parameters": [{"name": "Сервер", "types": ["Строка"], "required": true}, {"name": "Порт", "types": ["Число"], "required": false}, {"name": "Пользователь", "types": ["Строка"], "required": false}, {"name": "Пароль", "types": ["Строка"], "required": false}, {"name": "Прокси", "types": ["ИнтернетПрокси"], "required": false}, {"name": "Таймаут", "types": ["Число"], "required": false}, {"name": "ЗащищенноеСоединение", "types": ["ЗащищенноеСоединениеOpenSSL"], "required": false}]}
+      ],
+      "methods": [
+        {"name": "Получить", "name_en": "Get", "description": "GET-запрос", "parameters": [{"name": "Запрос", "types": ["HTTPЗапрос"], "required": true}, {"name": "ИмяВыходногоФайла", "types": ["Строка"], "required": false}], "return_types": ["HTTPОтвет"]},
+        {"name": "Отправить", "name_en": "Post", "description": "POST-запрос", "parameters": [{"name": "Запрос", "types": ["HTTPЗапрос"], "required": true}, {"name": "ИмяВыходногоФайла", "types": ["Строка"], "required": false}], "return_types": ["HTTPОтвет"]},
+        {"name": "Записать", "name_en": "Put", "description": "PUT-запрос", "parameters": [{"name": "Запрос", "types": ["HTTPЗапрос"], "required": true}, {"name": "ИмяВыходногоФайла", "types": ["Строка"], "required": false}], "return_types": ["HTTPОтвет"]},
+        {"name": "Удалить", "name_en": "Delete", "description": "DELETE-запрос", "parameters": [{"name": "Запрос", "types": ["HTTPЗапрос"], "required": true}, {"name": "ИмяВыходногоФайла", "types": ["Строка"], "required": false}], "return_types": ["HTTPОтвет"]},
+        {"name": "ВызватьHTTPМетод", "name_en": "CallHTTPMethod", "description": "Произвольный HTTP-метод", "parameters": [{"name": "Метод", "types": ["Строка"], "required": true}, {"name": "Запрос", "types": ["HTTPЗапрос"], "required": true}], "return_types": ["HTTPОтвет"]}
+      ],
+      "properties": []
+    }
+  ]
+}

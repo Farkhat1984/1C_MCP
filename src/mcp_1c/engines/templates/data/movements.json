@@ -1,0 +1,429 @@
+{
+  "templates": [
+    {
+      "id": "movement.accumulation_income",
+      "name": "Accumulation Register Income Movement",
+      "name_ru": "Движение прихода по регистру накопления",
+      "description": "Income movement for accumulation register",
+      "description_ru": "Движение прихода по регистру накопления",
+      "category": "movement",
+      "template_code": "// Движение по регистру ${RegisterName} - Приход\nДвижение = Движения.${RegisterName}.Добавить();\nДвижение.ВидДвижения = ВидДвиженияНакопления.Приход;\nДвижение.Период = ${Period};\n${DimensionsCode}\n${ResourcesCode}{{#if HasAttributes}}\n${AttributesCode}{{/if}}",
+      "placeholders": [
+        {
+          "name": "RegisterName",
+          "display_name": "Имя регистра",
+          "type": "metadata_name",
+          "required": true,
+          "metadata_type": "AccumulationRegister"
+        },
+        {
+          "name": "Period",
+          "display_name": "Период",
+          "description": "Выражение периода (обычно Дата)",
+          "type": "string",
+          "required": true,
+          "default_value": "Дата"
+        },
+        {
+          "name": "DimensionsCode",
+          "display_name": "Код измерений",
+          "description": "Заполнение измерений регистра",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "ResourcesCode",
+          "display_name": "Код ресурсов",
+          "description": "Заполнение ресурсов регистра",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "HasAttributes",
+          "display_name": "Есть реквизиты",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "AttributesCode",
+          "display_name": "Код реквизитов",
+          "description": "Заполнение реквизитов регистра",
+          "type": "code_block",
+          "required": false
+        }
+      ],
+      "tags": ["movement", "accumulation", "income", "регистр накопления", "приход", "движение"],
+      "use_cases": ["Приход товаров", "Поступление средств"],
+      "examples": [
+        {
+          "description": "Приход товаров на склад",
+          "values": {
+            "RegisterName": "ТоварыНаСкладах",
+            "Period": "Дата",
+            "DimensionsCode": "Движение.Номенклатура = ВыборкаТовары.Номенклатура;\nДвижение.Склад = Склад;",
+            "ResourcesCode": "Движение.Количество = ВыборкаТовары.Количество;"
+          }
+        }
+      ]
+    },
+    {
+      "id": "movement.accumulation_expense",
+      "name": "Accumulation Register Expense Movement",
+      "name_ru": "Движение расхода по регистру накопления",
+      "description": "Expense movement for accumulation register",
+      "description_ru": "Движение расхода по регистру накопления",
+      "category": "movement",
+      "template_code": "// Движение по регистру ${RegisterName} - Расход\nДвижение = Движения.${RegisterName}.Добавить();\nДвижение.ВидДвижения = ВидДвиженияНакопления.Расход;\nДвижение.Период = ${Period};\n${DimensionsCode}\n${ResourcesCode}{{#if HasAttributes}}\n${AttributesCode}{{/if}}",
+      "placeholders": [
+        {
+          "name": "RegisterName",
+          "display_name": "Имя регистра",
+          "type": "metadata_name",
+          "required": true,
+          "metadata_type": "AccumulationRegister"
+        },
+        {
+          "name": "Period",
+          "display_name": "Период",
+          "type": "string",
+          "required": true,
+          "default_value": "Дата"
+        },
+        {
+          "name": "DimensionsCode",
+          "display_name": "Код измерений",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "ResourcesCode",
+          "display_name": "Код ресурсов",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "HasAttributes",
+          "display_name": "Есть реквизиты",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "AttributesCode",
+          "display_name": "Код реквизитов",
+          "type": "code_block",
+          "required": false
+        }
+      ],
+      "tags": ["movement", "accumulation", "expense", "регистр накопления", "расход", "движение"],
+      "use_cases": ["Расход товаров", "Списание средств"]
+    },
+    {
+      "id": "movement.accumulation_turnovers",
+      "name": "Accumulation Register Turnovers Movement",
+      "name_ru": "Движение по оборотному регистру накопления",
+      "description": "Movement for turnovers accumulation register",
+      "description_ru": "Движение по оборотному регистру накопления (без остатков)",
+      "category": "movement",
+      "template_code": "// Движение по оборотному регистру ${RegisterName}\nДвижение = Движения.${RegisterName}.Добавить();\nДвижение.Период = ${Period};\n${DimensionsCode}\n${ResourcesCode}{{#if HasAttributes}}\n${AttributesCode}{{/if}}",
+      "placeholders": [
+        {
+          "name": "RegisterName",
+          "display_name": "Имя регистра",
+          "type": "metadata_name",
+          "required": true,
+          "metadata_type": "AccumulationRegister"
+        },
+        {
+          "name": "Period",
+          "display_name": "Период",
+          "type": "string",
+          "required": true,
+          "default_value": "Дата"
+        },
+        {
+          "name": "DimensionsCode",
+          "display_name": "Код измерений",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "ResourcesCode",
+          "display_name": "Код ресурсов",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "HasAttributes",
+          "display_name": "Есть реквизиты",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "AttributesCode",
+          "display_name": "Код реквизитов",
+          "type": "code_block",
+          "required": false
+        }
+      ],
+      "tags": ["movement", "accumulation", "turnovers", "оборотный регистр", "обороты"],
+      "use_cases": ["Регистрация оборотов", "Статистика продаж"]
+    },
+    {
+      "id": "movement.information_register",
+      "name": "Information Register Movement",
+      "name_ru": "Движение по регистру сведений",
+      "description": "Movement for information register",
+      "description_ru": "Запись в регистр сведений",
+      "category": "movement",
+      "template_code": "// Запись в регистр сведений ${RegisterName}\nЗапись = Движения.${RegisterName}.Добавить();\n{{#if IsPeriodic}}\nЗапись.Период = ${Period};\n{{/if}}\n{{#if HasRecorder}}\nЗапись.Регистратор = Ссылка;\n{{/if}}\n${DimensionsCode}\n${ResourcesCode}{{#if HasAttributes}}\n${AttributesCode}{{/if}}",
+      "placeholders": [
+        {
+          "name": "RegisterName",
+          "display_name": "Имя регистра",
+          "type": "metadata_name",
+          "required": true,
+          "metadata_type": "InformationRegister"
+        },
+        {
+          "name": "IsPeriodic",
+          "display_name": "Периодический",
+          "description": "Регистр периодический",
+          "type": "boolean",
+          "required": false,
+          "default_value": "true"
+        },
+        {
+          "name": "Period",
+          "display_name": "Период",
+          "type": "string",
+          "required": false,
+          "default_value": "Дата"
+        },
+        {
+          "name": "HasRecorder",
+          "display_name": "Есть регистратор",
+          "description": "Регистр подчинён регистратору",
+          "type": "boolean",
+          "required": false,
+          "default_value": "true"
+        },
+        {
+          "name": "DimensionsCode",
+          "display_name": "Код измерений",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "ResourcesCode",
+          "display_name": "Код ресурсов",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "HasAttributes",
+          "display_name": "Есть реквизиты",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "AttributesCode",
+          "display_name": "Код реквизитов",
+          "type": "code_block",
+          "required": false
+        }
+      ],
+      "tags": ["movement", "information", "регистр сведений", "запись"],
+      "use_cases": ["Хранение сведений", "Курсы валют", "Цены"]
+    },
+    {
+      "id": "movement.independent_information_register",
+      "name": "Independent Information Register Write",
+      "name_ru": "Запись в независимый регистр сведений",
+      "description": "Write to independent information register",
+      "description_ru": "Запись в независимый регистр сведений (вне движений)",
+      "category": "movement",
+      "template_code": "// Запись в независимый регистр сведений ${RegisterName}\nНаборЗаписей = РегистрыСведений.${RegisterName}.СоздатьНаборЗаписей();\n{{#if HasFilter}}\nНаборЗаписей.Отбор.${FilterDimension}.Установить(${FilterValue});\n{{/if}}\n\nЗапись = НаборЗаписей.Добавить();\n{{#if IsPeriodic}}\nЗапись.Период = ${Period};\n{{/if}}\n${DimensionsCode}\n${ResourcesCode}\n\nНаборЗаписей.Записать(${WriteMode});",
+      "placeholders": [
+        {
+          "name": "RegisterName",
+          "display_name": "Имя регистра",
+          "type": "metadata_name",
+          "required": true,
+          "metadata_type": "InformationRegister"
+        },
+        {
+          "name": "HasFilter",
+          "display_name": "Установить отбор",
+          "type": "boolean",
+          "required": false,
+          "default_value": "true"
+        },
+        {
+          "name": "FilterDimension",
+          "display_name": "Измерение отбора",
+          "type": "identifier",
+          "required": false
+        },
+        {
+          "name": "FilterValue",
+          "display_name": "Значение отбора",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "IsPeriodic",
+          "display_name": "Периодический",
+          "type": "boolean",
+          "required": false,
+          "default_value": "true"
+        },
+        {
+          "name": "Period",
+          "display_name": "Период",
+          "type": "string",
+          "required": false,
+          "default_value": "ТекущаяДата()"
+        },
+        {
+          "name": "DimensionsCode",
+          "display_name": "Код измерений",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "ResourcesCode",
+          "display_name": "Код ресурсов",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "WriteMode",
+          "display_name": "Режим записи",
+          "description": "Истина для замены, Ложь для дополнения",
+          "type": "boolean",
+          "required": false,
+          "default_value": "Истина"
+        }
+      ],
+      "tags": ["information", "independent", "независимый регистр", "запись"],
+      "use_cases": ["Запись вне транзакции", "Обновление сведений"]
+    },
+    {
+      "id": "movement.posting_full",
+      "name": "Full Document Posting Handler",
+      "name_ru": "Полный обработчик проведения",
+      "description": "Complete posting handler with multiple registers",
+      "description_ru": "Полный обработчик проведения с несколькими регистрами",
+      "category": "movement",
+      "template_code": "Процедура ОбработкаПроведения(Отказ, РежимПроведения)\n\t\n\t// Инициализация движений\n\tДвижения.${RegisterName1}.Записывать = Истина;\n\t{{#if HasRegister2}}\n\tДвижения.${RegisterName2}.Записывать = Истина;\n\t{{/if}}\n\t\n\t// Запрос данных\n\tЗапрос = Новый Запрос;\n\tЗапрос.Текст = \n\t\"ВЫБРАТЬ\n\t|\t${QueryFields}\n\t|ИЗ\n\t|\t${QuerySource}\n\t|ГДЕ\n\t|\t${QuerySource}.Ссылка = &Ссылка\";\n\t\n\tЗапрос.УстановитьПараметр(\"Ссылка\", Ссылка);\n\t\n\tРезультат = Запрос.Выполнить();\n\tВыборка = Результат.Выбрать();\n\t\n\tПока Выборка.Следующий() Цикл\n\t\t\n\t\t// Движение по регистру ${RegisterName1}\n\t\tДвижение = Движения.${RegisterName1}.Добавить();\n\t\tДвижение.ВидДвижения = ${MovementType1};\n\t\tДвижение.Период = Дата;\n\t\t${Movement1Code}\n\t\t\n\t\t{{#if HasRegister2}}\n\t\t// Движение по регистру ${RegisterName2}\n\t\tДвижение2 = Движения.${RegisterName2}.Добавить();\n\t\tДвижение2.ВидДвижения = ${MovementType2};\n\t\tДвижение2.Период = Дата;\n\t\t${Movement2Code}\n\t\t{{/if}}\n\t\t\n\tКонецЦикла;\n\t\nКонецПроцедуры",
+      "placeholders": [
+        {
+          "name": "RegisterName1",
+          "display_name": "Регистр 1",
+          "type": "metadata_name",
+          "required": true
+        },
+        {
+          "name": "MovementType1",
+          "display_name": "Тип движения 1",
+          "type": "string",
+          "required": true,
+          "allowed_values": ["ВидДвиженияНакопления.Приход", "ВидДвиженияНакопления.Расход"]
+        },
+        {
+          "name": "Movement1Code",
+          "display_name": "Код движения 1",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "HasRegister2",
+          "display_name": "Второй регистр",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "RegisterName2",
+          "display_name": "Регистр 2",
+          "type": "metadata_name",
+          "required": false
+        },
+        {
+          "name": "MovementType2",
+          "display_name": "Тип движения 2",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "Movement2Code",
+          "display_name": "Код движения 2",
+          "type": "code_block",
+          "required": false
+        },
+        {
+          "name": "QueryFields",
+          "display_name": "Поля запроса",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "QuerySource",
+          "display_name": "Источник запроса",
+          "description": "Таблица источника (например, Документ.ПриходТовара.Товары)",
+          "type": "table_name",
+          "required": true
+        }
+      ],
+      "tags": ["posting", "проведение", "документ", "полный обработчик"],
+      "use_cases": ["Проведение документа", "Несколько регистров"],
+      "applicable_module_types": ["ObjectModule"]
+    },
+    {
+      "id": "movement.control_balance",
+      "name": "Balance Control in Posting",
+      "name_ru": "Контроль остатков при проведении",
+      "description": "Balance control code for document posting",
+      "description_ru": "Код контроля остатков при проведении документа",
+      "category": "movement",
+      "template_code": "// Контроль остатков\nЕсли РежимПроведения = РежимПроведенияДокумента.Оперативный Тогда\n\t\n\t// Запрос остатков\n\tЗапросОстатков = Новый Запрос;\n\tЗапросОстатков.Текст = \n\t\"ВЫБРАТЬ\n\t|\tОстатки.${Dimension} КАК ${Dimension},\n\t|\tОстатки.${Resource}Остаток КАК Остаток\n\t|ИЗ\n\t|\tРегистрНакопления.${RegisterName}.Остатки(\n\t|\t\t&МоментВремени,\n\t|\t\t${Dimension} В (&Список${Dimension})) КАК Остатки\";\n\t\n\tЗапросОстатков.УстановитьПараметр(\"МоментВремени\", \n\t\tНовый Граница(МоментВремени(), ВидГраницы.Включая));\n\tЗапросОстатков.УстановитьПараметр(\"Список${Dimension}\", \n\t\t${TabularSection}.ВыгрузитьКолонку(\"${Dimension}\"));\n\t\n\tРезультатОстатков = ЗапросОстатков.Выполнить();\n\tВыборкаОстатков = РезультатОстатков.Выбрать();\n\t\n\tПока ВыборкаОстатков.Следующий() Цикл\n\t\t\n\t\t// Поиск требуемого количества\n\t\tНайденныеСтроки = ${TabularSection}.НайтиСтроки(\n\t\t\tНовый Структура(\"${Dimension}\", ВыборкаОстатков.${Dimension}));\n\t\t\n\t\tТребуется = 0;\n\t\tДля Каждого Строка Из НайденныеСтроки Цикл\n\t\t\tТребуется = Требуется + Строка.${Resource};\n\t\tКонецЦикла;\n\t\t\n\t\tЕсли ВыборкаОстатков.Остаток < Требуется Тогда\n\t\t\t\n\t\t\tСообщение = Новый СообщениеПользователю;\n\t\t\tСообщение.Текст = СтрШаблон(\n\t\t\t\t\"Недостаточно остатков %1: есть %2, требуется %3\",\n\t\t\t\tВыборкаОстатков.${Dimension},\n\t\t\t\tВыборкаОстатков.Остаток,\n\t\t\t\tТребуется);\n\t\t\tСообщение.Сообщить();\n\t\t\t\n\t\t\tОтказ = Истина;\n\t\t\t\n\t\tКонецЕсли;\n\t\t\n\tКонецЦикла;\n\t\nКонецЕсли;",
+      "placeholders": [
+        {
+          "name": "RegisterName",
+          "display_name": "Имя регистра",
+          "type": "metadata_name",
+          "required": true,
+          "metadata_type": "AccumulationRegister"
+        },
+        {
+          "name": "Dimension",
+          "display_name": "Измерение",
+          "description": "Измерение для контроля (например, Номенклатура)",
+          "type": "identifier",
+          "required": true
+        },
+        {
+          "name": "Resource",
+          "display_name": "Ресурс",
+          "description": "Ресурс для контроля (например, Количество)",
+          "type": "identifier",
+          "required": true
+        },
+        {
+          "name": "TabularSection",
+          "display_name": "Табличная часть",
+          "description": "Табличная часть документа",
+          "type": "identifier",
+          "required": true,
+          "default_value": "Товары"
+        }
+      ],
+      "tags": ["balance", "control", "контроль остатков", "оперативное проведение"],
+      "use_cases": ["Контроль остатков", "Оперативное проведение"]
+    }
+  ]
+}

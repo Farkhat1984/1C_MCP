@@ -1,0 +1,191 @@
+{
+  "templates": [
+    {
+      "id": "print.basic",
+      "name": "Basic Print Form",
+      "name_ru": "Базовая печатная форма",
+      "description": "Basic print form generation procedure",
+      "description_ru": "Базовая процедура генерации печатной формы",
+      "category": "print_form",
+      "template_code": "Функция Печать${FormName}(МассивОбъектов, ОбъектыПечати) Экспорт\n\t\n\tТабличныйДокумент = Новый ТабличныйДокумент;\n\tТабличныйДокумент.КлючПараметровПечати = \"ПФ_${ObjectType}_${FormName}\";\n\t\n\tМакет = ПолучитьМакет(\"${TemplateName}\");\n\t\n\tОбластьШапка = Макет.ПолучитьОбласть(\"Шапка\");\n\t{{#if HasHeader}}\n\tОбластьШапкаТаблицы = Макет.ПолучитьОбласть(\"ШапкаТаблицы\");\n\t{{/if}}\n\tОбластьСтрока = Макет.ПолучитьОбласть(\"Строка\");\n\t{{#if HasFooter}}\n\tОбластьПодвал = Макет.ПолучитьОбласть(\"Подвал\");\n\t{{/if}}\n\t\n\tДля Каждого ТекущийОбъект Из МассивОбъектов Цикл\n\t\t\n\t\tОбъект = ТекущийОбъект.ПолучитьОбъект();\n\t\t\n\t\t// Шапка\n\t\tОбластьШапка.Параметры.Заполнить(Объект);\n\t\t${HeaderParams}\n\t\tТабличныйДокумент.Вывести(ОбластьШапка);\n\t\t\n\t\t{{#if HasHeader}}\n\t\t// Шапка таблицы\n\t\tТабличныйДокумент.Вывести(ОбластьШапкаТаблицы);\n\t\t{{/if}}\n\t\t\n\t\t// Строки\n\t\tНомерСтроки = 0;\n\t\tДля Каждого СтрокаТЧ Из Объект.${TabularSectionName} Цикл\n\t\t\t\n\t\t\tНомерСтроки = НомерСтроки + 1;\n\t\t\t\n\t\t\tОбластьСтрока.Параметры.НомерСтроки = НомерСтроки;\n\t\t\tОбластьСтрока.Параметры.Заполнить(СтрокаТЧ);\n\t\t\t${RowParams}\n\t\t\t\n\t\t\tТабличныйДокумент.Вывести(ОбластьСтрока);\n\t\t\t\nКонецЦикла;\n\t\t\n\t\t{{#if HasFooter}}\n\t\t// Подвал\n\t\t${FooterParams}\n\t\tТабличныйДокумент.Вывести(ОбластьПодвал);\n\t\t{{/if}}\n\t\t\n\t\tУправлениеПечатью.ЗадатьОбластьПечатиДокумента(ТабличныйДокумент, \n\t\t\tТекущийОбъект, ОбъектыПечати);\n\t\t\nКонецЦикла;\n\t\n\tВозврат ТабличныйДокумент;\n\t\nКонецФункции",
+      "placeholders": [
+        {
+          "name": "FormName",
+          "display_name": "Имя формы",
+          "description": "Имя печатной формы",
+          "type": "identifier",
+          "required": true
+        },
+        {
+          "name": "ObjectType",
+          "display_name": "Тип объекта",
+          "description": "Тип объекта (Документ, Справочник)",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "TemplateName",
+          "display_name": "Имя макета",
+          "description": "Имя макета печатной формы",
+          "type": "identifier",
+          "required": true
+        },
+        {
+          "name": "HasHeader",
+          "display_name": "Есть шапка таблицы",
+          "type": "boolean",
+          "required": false,
+          "default_value": "true"
+        },
+        {
+          "name": "HasFooter",
+          "display_name": "Есть подвал",
+          "type": "boolean",
+          "required": false,
+          "default_value": "true"
+        },
+        {
+          "name": "HeaderParams",
+          "display_name": "Параметры шапки",
+          "description": "Дополнительные параметры шапки",
+          "type": "code_block",
+          "required": false,
+          "default_value": ""
+        },
+        {
+          "name": "TabularSectionName",
+          "display_name": "Имя табличной части",
+          "type": "identifier",
+          "required": true,
+          "default_value": "Товары"
+        },
+        {
+          "name": "RowParams",
+          "display_name": "Параметры строки",
+          "description": "Дополнительные параметры строки",
+          "type": "code_block",
+          "required": false,
+          "default_value": ""
+        },
+        {
+          "name": "FooterParams",
+          "display_name": "Параметры подвала",
+          "description": "Код заполнения подвала (итоги)",
+          "type": "code_block",
+          "required": false
+        }
+      ],
+      "tags": ["print", "печать", "печатная форма", "табличный документ"],
+      "use_cases": ["Печать документа", "Печатная форма с таблицей"],
+      "applicable_module_types": ["ManagerModule", "ObjectModule"]
+    },
+    {
+      "id": "print.with_query",
+      "name": "Print Form with Query",
+      "name_ru": "Печатная форма с запросом",
+      "description": "Print form with data query",
+      "description_ru": "Печатная форма с запросом данных",
+      "category": "print_form",
+      "template_code": "Функция Печать${FormName}(МассивОбъектов, ОбъектыПечати) Экспорт\n\t\n\tТабличныйДокумент = Новый ТабличныйДокумент;\n\tТабличныйДокумент.КлючПараметровПечати = \"ПФ_${ObjectType}_${FormName}\";\n\t\n\tМакет = ПолучитьМакет(\"${TemplateName}\");\n\t\n\tОбластьШапка = Макет.ПолучитьОбласть(\"Шапка\");\n\tОбластьШапкаТаблицы = Макет.ПолучитьОбласть(\"ШапкаТаблицы\");\n\tОбластьСтрока = Макет.ПолучитьОбласть(\"Строка\");\n\tОбластьПодвал = Макет.ПолучитьОбласть(\"Подвал\");\n\t\n\t// Запрос данных\n\tЗапрос = Новый Запрос;\n\tЗапрос.Текст = \n\t\"${QueryText}\";\n\t\n\tЗапрос.УстановитьПараметр(\"МассивДокументов\", МассивОбъектов);\n\t\n\tРезультат = Запрос.Выполнить();\n\tВыборкаДокументы = Результат.Выбрать(ОбходРезультатаЗапроса.ПоГруппировкам);\n\t\n\tПока ВыборкаДокументы.Следующий() Цикл\n\t\t\n\t\t// Шапка документа\n\t\tОбластьШапка.Параметры.Заполнить(ВыборкаДокументы);\n\t\tТабличныйДокумент.Вывести(ОбластьШапка);\n\t\tТабличныйДокумент.Вывести(ОбластьШапкаТаблицы);\n\t\t\n\t\t// Строки\n\t\tВыборкаСтроки = ВыборкаДокументы.Выбрать();\n\t\tНомерСтроки = 0;\n\t\tИтогоСумма = 0;\n\t\t\n\t\tПока ВыборкаСтроки.Следующий() Цикл\n\t\t\t\n\t\t\tНомерСтроки = НомерСтроки + 1;\n\t\t\tОбластьСтрока.Параметры.НомерСтроки = НомерСтроки;\n\t\t\tОбластьСтрока.Параметры.Заполнить(ВыборкаСтроки);\n\t\t\t\n\t\t\tТабличныйДокумент.Вывести(ОбластьСтрока);\n\t\t\t\n\t\t\t{{#if HasTotals}}\n\t\t\tИтогоСумма = ИтогоСумма + ВыборкаСтроки.${TotalField};\n\t\t\t{{/if}}\n\t\t\t\n\t\tКонецЦикла;\n\t\t\n\t\t// Подвал\n\t\t{{#if HasTotals}}\n\t\tОбластьПодвал.Параметры.ИтогоСумма = ИтогоСумма;\n\t\t{{/if}}\n\t\tТабличныйДокумент.Вывести(ОбластьПодвал);\n\t\t\n\t\tУправлениеПечатью.ЗадатьОбластьПечатиДокумента(ТабличныйДокумент, \n\t\t\tВыборкаДокументы.Ссылка, ОбъектыПечати);\n\t\t\n\tКонецЦикла;\n\t\n\tВозврат ТабличныйДокумент;\n\t\nКонецФункции",
+      "placeholders": [
+        {
+          "name": "FormName",
+          "display_name": "Имя формы",
+          "type": "identifier",
+          "required": true
+        },
+        {
+          "name": "ObjectType",
+          "display_name": "Тип объекта",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "TemplateName",
+          "display_name": "Имя макета",
+          "type": "identifier",
+          "required": true
+        },
+        {
+          "name": "QueryText",
+          "display_name": "Текст запроса",
+          "description": "Запрос для получения данных печатной формы",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "HasTotals",
+          "display_name": "Есть итоги",
+          "type": "boolean",
+          "required": false,
+          "default_value": "true"
+        },
+        {
+          "name": "TotalField",
+          "display_name": "Поле итога",
+          "description": "Поле для подсчёта итога",
+          "type": "identifier",
+          "required": false,
+          "default_value": "Сумма"
+        }
+      ],
+      "tags": ["print", "печать", "запрос", "query"],
+      "use_cases": ["Печать с расчётами", "Сложная печатная форма"]
+    },
+    {
+      "id": "print.commands_module",
+      "name": "Print Commands Module",
+      "name_ru": "Модуль команд печати",
+      "description": "Print commands in manager module",
+      "description_ru": "Команды печати в модуле менеджера",
+      "category": "print_form",
+      "template_code": "Процедура ДобавитьКомандыПечати(КомандыПечати) Экспорт\n\t\n\tКомандаПечати = КомандыПечати.Добавить();\n\tКомандаПечати.Идентификатор = \"${CommandId}\";\n\tКомандаПечати.Представление = НСтр(\"ru = '${CommandPresentation}'\");\n\tКомандаПечати.ПроверкаПроведенияПередПечатью = ${CheckPosting};\n\t{{#if HasOrder}}\n\tКомандаПечати.Порядок = ${Order};\n\t{{/if}}\n\t\nКонецПроцедуры\n\nПроцедура Печать(МассивОбъектов, ПараметрыПечати, КоллекцияПечатныхФорм,\n\tОбъектыПечати, ПараметрыВывода) Экспорт\n\t\n\tЕсли УправлениеПечатью.НужноПечататьМакет(КоллекцияПечатныхФорм, \"${CommandId}\") Тогда\n\t\t\n\t\tУправлениеПечатью.ВывестиТабличныйДокументВКоллекцию(\n\t\t\tКоллекцияПечатныхФорм,\n\t\t\t\"${CommandId}\",\n\t\t\tНСтр(\"ru = '${CommandPresentation}'\"),\n\t\t\tПечать${CommandId}(МассивОбъектов, ОбъектыПечати),\n\t\t\t,\n\t\t\t\"${ObjectFullName}\");\n\t\t\n\tКонецЕсли;\n\t\nКонецПроцедуры",
+      "placeholders": [
+        {
+          "name": "CommandId",
+          "display_name": "Идентификатор команды",
+          "type": "identifier",
+          "required": true
+        },
+        {
+          "name": "CommandPresentation",
+          "display_name": "Представление",
+          "description": "Отображаемое название",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "CheckPosting",
+          "display_name": "Проверка проведения",
+          "type": "boolean",
+          "required": false,
+          "default_value": "Истина"
+        },
+        {
+          "name": "HasOrder",
+          "display_name": "Задать порядок",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "Order",
+          "display_name": "Порядок",
+          "type": "integer",
+          "required": false,
+          "default_value": "1"
+        },
+        {
+          "name": "ObjectFullName",
+          "display_name": "Полное имя объекта",
+          "description": "Например: Документ.РеализацияТоваровУслуг",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "tags": ["print", "commands", "команды печати", "управление печатью"],
+      "use_cases": ["Регистрация печатной формы", "Команды печати"],
+      "applicable_module_types": ["ManagerModule"]
+    }
+  ]
+}

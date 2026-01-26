@@ -1,0 +1,381 @@
+{
+  "templates": [
+    {
+      "id": "api.http_service_get",
+      "name": "HTTP Service GET Method",
+      "name_ru": "GET метод HTTP-сервиса",
+      "description": "HTTP Service method for GET requests",
+      "description_ru": "Метод HTTP-сервиса для GET-запросов",
+      "category": "api",
+      "template_code": "Функция ${MethodName}Получить(Запрос)\n\t\n\tОтвет = Новый HTTPСервисОтвет(200);\n\t\n\tПопытка\n\t\t\n\t\t// Получение параметров\n\t\t{{#if HasParameter}}\n\t\t${ParameterName} = Запрос.ПараметрыURL.Получить(\"${ParameterUrlName}\");\n\t\tЕсли ${ParameterName} = Неопределено Тогда\n\t\t\tОтвет.КодСостояния = 400;\n\t\t\tОтвет.УстановитьТелоИзСтроки(\"{\\\"error\\\": \\\"Missing parameter ${ParameterUrlName}\\\"}\");\n\t\t\tВозврат Ответ;\n\t\tКонецЕсли;\n\t\t{{/if}}\n\t\t\n\t\t// Бизнес-логика\n\t\t${BusinessLogic}\n\t\t\n\t\t// Формирование ответа\n\t\tРезультат = Новый Структура;\n\t\t${ResultCode}\n\t\t\n\t\tОтвет.Заголовки.Вставить(\"Content-Type\", \"application/json; charset=utf-8\");\n\t\tОтвет.УстановитьТелоИзСтроки(JSON_ВСтроку(Результат));\n\t\t\n\tИсключение\n\t\t\n\t\tОтвет.КодСостояния = 500;\n\t\tОтвет.УстановитьТелоИзСтроки(\"{\\\"error\\\": \\\"\" + ОписаниеОшибки() + \"\\\"}\")\n\t\t\n\tКонецПопытки;\n\t\n\tВозврат Ответ;\n\t\nКонецФункции",
+      "placeholders": [
+        {
+          "name": "MethodName",
+          "display_name": "Имя метода",
+          "type": "identifier",
+          "required": true
+        },
+        {
+          "name": "HasParameter",
+          "display_name": "Есть параметр",
+          "type": "boolean",
+          "required": false,
+          "default_value": "true"
+        },
+        {
+          "name": "ParameterName",
+          "display_name": "Имя параметра",
+          "type": "identifier",
+          "required": false
+        },
+        {
+          "name": "ParameterUrlName",
+          "display_name": "URL имя параметра",
+          "description": "Имя параметра в URL",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "BusinessLogic",
+          "display_name": "Бизнес-логика",
+          "description": "Код бизнес-логики",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "ResultCode",
+          "display_name": "Код результата",
+          "description": "Код формирования результата",
+          "type": "code_block",
+          "required": true
+        }
+      ],
+      "tags": ["api", "http", "get", "rest", "сервис"],
+      "use_cases": ["REST API", "Получение данных", "Интеграция"]
+    },
+    {
+      "id": "api.http_service_post",
+      "name": "HTTP Service POST Method",
+      "name_ru": "POST метод HTTP-сервиса",
+      "description": "HTTP Service method for POST requests",
+      "description_ru": "Метод HTTP-сервиса для POST-запросов",
+      "category": "api",
+      "template_code": "Функция ${MethodName}Записать(Запрос)\n\t\n\tОтвет = Новый HTTPСервисОтвет(200);\n\t\n\tПопытка\n\t\t\n\t\t// Парсинг JSON из тела запроса\n\t\tТелоЗапроса = Запрос.ПолучитьТелоКакСтроку();\n\t\tДанные = JSON_ИзСтроки(ТелоЗапроса);\n\t\t\n\t\tЕсли Данные = Неопределено Тогда\n\t\t\tОтвет.КодСостояния = 400;\n\t\t\tОтвет.УстановитьТелоИзСтроки(\"{\\\"error\\\": \\\"Invalid JSON\\\"}\");\n\t\t\tВозврат Ответ;\n\t\tКонецЕсли;\n\t\t\n\t\t// Валидация данных\n\t\t{{#if ValidateRequired}}\n\t\tЕсли НЕ Данные.Свойство(\"${RequiredField}\") Тогда\n\t\t\tОтвет.КодСостояния = 400;\n\t\t\tОтвет.УстановитьТелоИзСтроки(\"{\\\"error\\\": \\\"Missing field ${RequiredField}\\\"}\");\n\t\t\tВозврат Ответ;\n\t\tКонецЕсли;\n\t\t{{/if}}\n\t\t\n\t\t// Бизнес-логика\n\t\t${BusinessLogic}\n\t\t\n\t\t// Формирование ответа\n\t\tРезультат = Новый Структура;\n\t\tРезультат.Вставить(\"success\", Истина);\n\t\t${ResultCode}\n\t\t\n\t\tОтвет.КодСостояния = 201;\n\t\tОтвет.Заголовки.Вставить(\"Content-Type\", \"application/json; charset=utf-8\");\n\t\tОтвет.УстановитьТелоИзСтроки(JSON_ВСтроку(Результат));\n\t\t\n\tИсключение\n\t\t\n\t\tОтвет.КодСостояния = 500;\n\t\tОтвет.УстановитьТелоИзСтроки(\"{\\\"error\\\": \\\"\" + ОписаниеОшибки() + \"\\\"}\")\n\t\t\n\tКонецПопытки;\n\t\n\tВозврат Ответ;\n\t\nКонецФункции",
+      "placeholders": [
+        {
+          "name": "MethodName",
+          "display_name": "Имя метода",
+          "type": "identifier",
+          "required": true
+        },
+        {
+          "name": "ValidateRequired",
+          "display_name": "Валидация обязательных",
+          "type": "boolean",
+          "required": false,
+          "default_value": "true"
+        },
+        {
+          "name": "RequiredField",
+          "display_name": "Обязательное поле",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "BusinessLogic",
+          "display_name": "Бизнес-логика",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "ResultCode",
+          "display_name": "Код результата",
+          "type": "code_block",
+          "required": false,
+          "default_value": ""
+        }
+      ],
+      "tags": ["api", "http", "post", "rest", "сервис"],
+      "use_cases": ["REST API", "Создание данных", "Интеграция"]
+    },
+    {
+      "id": "api.common_module_export",
+      "name": "Export Function in Common Module",
+      "name_ru": "Экспортная функция общего модуля",
+      "description": "Export function for API in common module",
+      "description_ru": "Экспортная функция для API в общем модуле",
+      "category": "api",
+      "template_code": "// ${Description}\n//\n// Параметры:\n{{#each Parameters}}\n//   ${name} - ${type} - ${description}\n{{/each}}\n//\n// Возвращаемое значение:\n//   ${ReturnType} - ${ReturnDescription}\n//\nФункция ${FunctionName}({{#each Parameters}}${name}{{#if hasDefault}} = ${default}{{/if}}{{#if !last}}, {{/if}}{{/each}}) Экспорт\n\t\n\t{{#if HasValidation}}\n\t// Валидация параметров\n\t${ValidationCode}\n\t{{/if}}\n\t\n\t${FunctionBody}\n\t\n\tВозврат ${ReturnValue};\n\t\nКонецФункции",
+      "placeholders": [
+        {
+          "name": "Description",
+          "display_name": "Описание",
+          "description": "Описание функции",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "FunctionName",
+          "display_name": "Имя функции",
+          "type": "identifier",
+          "required": true
+        },
+        {
+          "name": "Parameters",
+          "display_name": "Параметры",
+          "description": "JSON массив параметров [{name, type, description, hasDefault, default}]",
+          "type": "string",
+          "required": false,
+          "default_value": "[]"
+        },
+        {
+          "name": "HasValidation",
+          "display_name": "Есть валидация",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "ValidationCode",
+          "display_name": "Код валидации",
+          "type": "code_block",
+          "required": false
+        },
+        {
+          "name": "FunctionBody",
+          "display_name": "Тело функции",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "ReturnType",
+          "display_name": "Тип возврата",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ReturnDescription",
+          "display_name": "Описание возврата",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ReturnValue",
+          "display_name": "Возвращаемое значение",
+          "type": "string",
+          "required": true,
+          "default_value": "Результат"
+        }
+      ],
+      "tags": ["api", "export", "common module", "экспорт", "общий модуль"],
+      "use_cases": ["API функции", "Внешний доступ"]
+    },
+    {
+      "id": "api.web_service_operation",
+      "name": "Web Service Operation",
+      "name_ru": "Операция Web-сервиса",
+      "description": "Web service SOAP operation",
+      "description_ru": "Операция SOAP Web-сервиса",
+      "category": "api",
+      "template_code": "Функция ${OperationName}({{#each Parameters}}${name}{{#if !last}}, {{/if}}{{/each}})\n\t\n\tПопытка\n\t\t\n\t\t${BusinessLogic}\n\t\t\n\t\t// Формирование ответа\n\t\tОтвет = ФабрикаXDTO.Создать(ФабрикаXDTO.Тип(\"${Namespace}\", \"${ResponseType}\"));\n\t\t${ResponseCode}\n\t\t\n\t\tВозврат Ответ;\n\t\t\n\tИсключение\n\t\t\n\t\tВызватьИсключение ОписаниеОшибки();\n\t\t\n\tКонецПопытки;\n\t\nКонецФункции",
+      "placeholders": [
+        {
+          "name": "OperationName",
+          "display_name": "Имя операции",
+          "type": "identifier",
+          "required": true
+        },
+        {
+          "name": "Parameters",
+          "display_name": "Параметры",
+          "description": "JSON массив параметров",
+          "type": "string",
+          "required": false,
+          "default_value": "[]"
+        },
+        {
+          "name": "BusinessLogic",
+          "display_name": "Бизнес-логика",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "Namespace",
+          "display_name": "Пространство имён",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ResponseType",
+          "display_name": "Тип ответа",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "ResponseCode",
+          "display_name": "Код ответа",
+          "type": "code_block",
+          "required": true
+        }
+      ],
+      "tags": ["api", "web service", "soap", "xdto"],
+      "use_cases": ["SOAP интеграция", "Web-сервисы"]
+    },
+    {
+      "id": "api.json_helper",
+      "name": "JSON Helper Functions",
+      "name_ru": "Функции работы с JSON",
+      "description": "Helper functions for JSON serialization",
+      "description_ru": "Вспомогательные функции для работы с JSON",
+      "category": "api",
+      "template_code": "// Преобразование значения в JSON строку\nФункция JSON_ВСтроку(Значение) Экспорт\n\t\n\tЗаписьJSON = Новый ЗаписьJSON;\n\tЗаписьJSON.УстановитьСтроку();\n\t\n\tНастройкиСериализации = Новый НастройкиСериализацииJSON;\n\tНастройкиСериализации.ФорматСериализацииДаты = ФорматДатыJSON.ISO;\n\t\n\tЗаписатьJSON(ЗаписьJSON, Значение, НастройкиСериализации);\n\t\n\tВозврат ЗаписьJSON.Закрыть();\n\t\nКонецФункции\n\n// Чтение JSON строки в значение\nФункция JSON_ИзСтроки(СтрокаJSON) Экспорт\n\t\n\tЕсли ПустаяСтрока(СтрокаJSON) Тогда\n\t\tВозврат Неопределено;\n\tКонецЕсли;\n\t\n\tПопытка\n\t\t\n\t\tЧтениеJSON = Новый ЧтениеJSON;\n\t\tЧтениеJSON.УстановитьСтроку(СтрокаJSON);\n\t\t\n\t\tЗначение = ПрочитатьJSON(ЧтениеJSON, Истина);\n\t\t\n\t\tЧтениеJSON.Закрыть();\n\t\t\n\t\tВозврат Значение;\n\t\t\n\tИсключение\n\t\t\n\t\tВозврат Неопределено;\n\t\t\n\tКонецПопытки;\n\t\nКонецФункции",
+      "placeholders": [],
+      "tags": ["json", "serialization", "helper", "сериализация"],
+      "use_cases": ["Работа с JSON", "Сериализация данных"]
+    },
+    {
+      "id": "api.subscription_handler",
+      "name": "Event Subscription Handler",
+      "name_ru": "Обработчик подписки на событие",
+      "description": "Handler for event subscription",
+      "description_ru": "Обработчик подписки на событие",
+      "category": "subscription",
+      "template_code": "// Обработчик подписки \"${SubscriptionName}\"\n// Источники: ${Sources}\n// Событие: ${EventName}\n//\nПроцедура ${HandlerName}(Источник, Отказ) Экспорт\n\t\n\t// Проверка типа источника\n\t{{#if CheckSourceType}}\n\tЕсли НЕ ТипЗнч(Источник) = Тип(\"${SourceType}\") Тогда\n\t\tВозврат;\n\tКонецЕсли;\n\t{{/if}}\n\t\n\t{{#if CheckCondition}}\n\t// Проверка условия выполнения\n\tЕсли НЕ ${Condition} Тогда\n\t\tВозврат;\n\tКонецЕсли;\n\t{{/if}}\n\t\n\t// Логика обработчика\n\t${HandlerCode}\n\t\nКонецПроцедуры",
+      "placeholders": [
+        {
+          "name": "SubscriptionName",
+          "display_name": "Имя подписки",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "Sources",
+          "display_name": "Источники",
+          "description": "Типы объектов-источников",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "EventName",
+          "display_name": "Событие",
+          "description": "Имя события (ПередЗаписью, ПриЗаписи и т.д.)",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "HandlerName",
+          "display_name": "Имя обработчика",
+          "type": "identifier",
+          "required": true
+        },
+        {
+          "name": "CheckSourceType",
+          "display_name": "Проверка типа",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "SourceType",
+          "display_name": "Тип источника",
+          "type": "type_name",
+          "required": false
+        },
+        {
+          "name": "CheckCondition",
+          "display_name": "Проверка условия",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "Condition",
+          "display_name": "Условие",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "HandlerCode",
+          "display_name": "Код обработчика",
+          "type": "code_block",
+          "required": true
+        }
+      ],
+      "tags": ["subscription", "event", "подписка", "событие"],
+      "use_cases": ["Подписка на события", "Глобальная обработка"]
+    },
+    {
+      "id": "api.scheduled_job",
+      "name": "Scheduled Job Handler",
+      "name_ru": "Обработчик регламентного задания",
+      "description": "Handler for scheduled job",
+      "description_ru": "Обработчик регламентного задания",
+      "category": "scheduled_job",
+      "template_code": "// Обработчик регламентного задания \"${JobName}\"\n// Расписание: ${Schedule}\n//\nПроцедура ${HandlerName}() Экспорт\n\t\n\t{{#if HasLock}}\n\t// Установка блокировки\n\tБлокировка = Новый БлокировкаДанных;\n\tЭлементБлокировки = Блокировка.Добавить(\"${LockTable}\");\n\tЭлементБлокировки.Режим = РежимБлокировкиДанных.Исключительный;\n\t{{/if}}\n\t\n\tПопытка\n\t\t\n\t\t{{#if HasLock}}\n\t\tБлокировка.Заблокировать();\n\t\t{{/if}}\n\t\t\n\t\t// Основная логика\n\t\t${JobCode}\n\t\t\n\t\t{{#if HasLogging}}\n\t\t// Логирование\n\t\tЗаписьЖурналаРегистрации(\n\t\t\t\"${LogEventName}\",\n\t\t\tУровеньЖурналаРегистрации.Информация,\n\t\t\t,\n\t\t\t,\n\t\t\t\"${LogMessage}\");\n\t\t{{/if}}\n\t\t\n\tИсключение\n\t\t\n\t\tЗаписьЖурналаРегистрации(\n\t\t\t\"${LogEventName}\",\n\t\t\tУровеньЖурналаРегистрации.Ошибка,\n\t\t\t,\n\t\t\t,\n\t\t\tОписаниеОшибки());\n\t\t\n\tКонецПопытки;\n\t\nКонецПроцедуры",
+      "placeholders": [
+        {
+          "name": "JobName",
+          "display_name": "Имя задания",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "Schedule",
+          "display_name": "Расписание",
+          "description": "Описание расписания",
+          "type": "string",
+          "required": false,
+          "default_value": "Ежедневно в 00:00"
+        },
+        {
+          "name": "HandlerName",
+          "display_name": "Имя обработчика",
+          "type": "identifier",
+          "required": true
+        },
+        {
+          "name": "HasLock",
+          "display_name": "Использовать блокировку",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "LockTable",
+          "display_name": "Таблица блокировки",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "JobCode",
+          "display_name": "Код задания",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "HasLogging",
+          "display_name": "Логирование",
+          "type": "boolean",
+          "required": false,
+          "default_value": "true"
+        },
+        {
+          "name": "LogEventName",
+          "display_name": "Событие журнала",
+          "type": "string",
+          "required": false,
+          "default_value": "РегламентноеЗадание"
+        },
+        {
+          "name": "LogMessage",
+          "display_name": "Сообщение журнала",
+          "type": "string",
+          "required": false,
+          "default_value": "Выполнено успешно"
+        }
+      ],
+      "tags": ["scheduled", "job", "регламентное задание", "background"],
+      "use_cases": ["Фоновые задачи", "Регламентные операции"]
+    }
+  ]
+}

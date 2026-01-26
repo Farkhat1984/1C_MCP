@@ -1,0 +1,124 @@
+{
+  "version": "8.3.24",
+  "sections": [
+    {
+      "name": "Строковые функции",
+      "name_en": "String functions",
+      "methods": [
+        {"name": "СтрДлина", "name_en": "StrLen", "description": "Возвращает число символов в строке", "parameters": [{"name": "Строка", "name_en": "String", "types": ["Строка"], "required": true}], "return_types": ["Число"], "category": "string"},
+        {"name": "СтрНайти", "name_en": "StrFind", "description": "Находит позицию подстроки в строке", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}, {"name": "ПодстрокаПоиска", "types": ["Строка"], "required": true}, {"name": "НаправлениеПоиска", "types": ["НаправлениеПоиска"], "required": false}, {"name": "НачальнаяПозиция", "types": ["Число"], "required": false}, {"name": "НомерВхождения", "types": ["Число"], "required": false}], "return_types": ["Число"], "category": "string"},
+        {"name": "Лев", "name_en": "Left", "description": "Возвращает левую часть строки указанной длины", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}, {"name": "ЧислоСимволов", "types": ["Число"], "required": true}], "return_types": ["Строка"], "category": "string"},
+        {"name": "Прав", "name_en": "Right", "description": "Возвращает правую часть строки указанной длины", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}, {"name": "ЧислоСимволов", "types": ["Число"], "required": true}], "return_types": ["Строка"], "category": "string"},
+        {"name": "Сред", "name_en": "Mid", "description": "Возвращает подстроку начиная с указанной позиции", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}, {"name": "НачальныйНомер", "types": ["Число"], "required": true}, {"name": "ЧислоСимволов", "types": ["Число"], "required": false}], "return_types": ["Строка"], "category": "string"},
+        {"name": "СокрЛ", "name_en": "TrimL", "description": "Удаляет пробелы слева", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}], "return_types": ["Строка"], "category": "string"},
+        {"name": "СокрП", "name_en": "TrimR", "description": "Удаляет пробелы справа", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}], "return_types": ["Строка"], "category": "string"},
+        {"name": "СокрЛП", "name_en": "TrimAll", "description": "Удаляет пробелы слева и справа", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}], "return_types": ["Строка"], "category": "string"},
+        {"name": "ВРег", "name_en": "Upper", "description": "Преобразует строку в верхний регистр", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}], "return_types": ["Строка"], "category": "string"},
+        {"name": "НРег", "name_en": "Lower", "description": "Преобразует строку в нижний регистр", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}], "return_types": ["Строка"], "category": "string"},
+        {"name": "ТРег", "name_en": "Title", "description": "Преобразует первые буквы слов в верхний регистр", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}], "return_types": ["Строка"], "category": "string"},
+        {"name": "СтрЗаменить", "name_en": "StrReplace", "description": "Заменяет все вхождения подстроки", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}, {"name": "ПодстрокаПоиска", "types": ["Строка"], "required": true}, {"name": "ПодстрокаЗамены", "types": ["Строка"], "required": true}], "return_types": ["Строка"], "category": "string"},
+        {"name": "СтрЧислоВхождений", "name_en": "StrOccurrenceCount", "description": "Возвращает число вхождений подстроки", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}, {"name": "ПодстрокаПоиска", "types": ["Строка"], "required": true}], "return_types": ["Число"], "category": "string"},
+        {"name": "СтрЧислоСтрок", "name_en": "StrLineCount", "description": "Возвращает число строк в многострочном тексте", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}], "return_types": ["Число"], "category": "string"},
+        {"name": "СтрПолучитьСтроку", "name_en": "StrGetLine", "description": "Получает строку из многострочного текста по номеру", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}, {"name": "НомерСтроки", "types": ["Число"], "required": true}], "return_types": ["Строка"], "category": "string"},
+        {"name": "СтрСоединить", "name_en": "StrConcat", "description": "Объединяет массив строк в одну строку", "parameters": [{"name": "Строки", "types": ["Массив"], "required": true}, {"name": "Разделитель", "types": ["Строка"], "required": false}], "return_types": ["Строка"], "category": "string"},
+        {"name": "СтрРазделить", "name_en": "StrSplit", "description": "Разделяет строку на массив подстрок", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}, {"name": "Разделитель", "types": ["Строка"], "required": true}, {"name": "ВключатьПустые", "types": ["Булево"], "required": false}], "return_types": ["Массив"], "category": "string"},
+        {"name": "СтрСравнить", "name_en": "StrCompare", "description": "Сравнивает две строки без учета регистра", "parameters": [{"name": "Строка1", "types": ["Строка"], "required": true}, {"name": "Строка2", "types": ["Строка"], "required": true}], "return_types": ["Число"], "category": "string"},
+        {"name": "СтрНачинаетсяС", "name_en": "StrStartsWith", "description": "Проверяет, начинается ли строка с указанной подстроки", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}, {"name": "СтрокаПоиска", "types": ["Строка"], "required": true}], "return_types": ["Булево"], "category": "string", "since_version": "8.3.6"},
+        {"name": "СтрЗаканчиваетсяНа", "name_en": "StrEndsWith", "description": "Проверяет, заканчивается ли строка на указанную подстроку", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}, {"name": "СтрокаПоиска", "types": ["Строка"], "required": true}], "return_types": ["Булево"], "category": "string", "since_version": "8.3.6"},
+        {"name": "Символ", "name_en": "Char", "description": "Возвращает символ по коду Unicode", "parameters": [{"name": "КодСимвола", "types": ["Число"], "required": true}], "return_types": ["Строка"], "category": "string"},
+        {"name": "КодСимвола", "name_en": "CharCode", "description": "Возвращает код Unicode символа", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}, {"name": "НомерСимвола", "types": ["Число"], "required": false}], "return_types": ["Число"], "category": "string"},
+        {"name": "ПустаяСтрока", "name_en": "IsBlankString", "description": "Проверяет, является ли строка пустой или содержит только пробелы", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}], "return_types": ["Булево"], "category": "string"}
+      ]
+    },
+    {
+      "name": "Математические функции",
+      "name_en": "Math functions",
+      "methods": [
+        {"name": "Окр", "name_en": "Round", "description": "Округляет число до указанной точности", "parameters": [{"name": "Число", "types": ["Число"], "required": true}, {"name": "Разрядность", "types": ["Число"], "required": false}, {"name": "РежимОкругления", "types": ["РежимОкругления"], "required": false}], "return_types": ["Число"], "category": "math"},
+        {"name": "Цел", "name_en": "Int", "description": "Возвращает целую часть числа", "parameters": [{"name": "Число", "types": ["Число"], "required": true}], "return_types": ["Число"], "category": "math"},
+        {"name": "Мин", "name_en": "Min", "description": "Возвращает минимальное значение из списка", "parameters": [{"name": "Значения", "types": ["Число", "Дата", "Строка"], "required": true}], "return_types": ["Число", "Дата", "Строка"], "category": "math"},
+        {"name": "Макс", "name_en": "Max", "description": "Возвращает максимальное значение из списка", "parameters": [{"name": "Значения", "types": ["Число", "Дата", "Строка"], "required": true}], "return_types": ["Число", "Дата", "Строка"], "category": "math"},
+        {"name": "Pow", "name_en": "Pow", "description": "Возводит число в степень", "parameters": [{"name": "Основание", "types": ["Число"], "required": true}, {"name": "Показатель", "types": ["Число"], "required": true}], "return_types": ["Число"], "category": "math"},
+        {"name": "Sqrt", "name_en": "Sqrt", "description": "Вычисляет квадратный корень", "parameters": [{"name": "Число", "types": ["Число"], "required": true}], "return_types": ["Число"], "category": "math"},
+        {"name": "Exp", "name_en": "Exp", "description": "Вычисляет экспоненту", "parameters": [{"name": "Число", "types": ["Число"], "required": true}], "return_types": ["Число"], "category": "math"},
+        {"name": "Log", "name_en": "Log", "description": "Вычисляет натуральный логарифм", "parameters": [{"name": "Число", "types": ["Число"], "required": true}], "return_types": ["Число"], "category": "math"},
+        {"name": "Log10", "name_en": "Log10", "description": "Вычисляет десятичный логарифм", "parameters": [{"name": "Число", "types": ["Число"], "required": true}], "return_types": ["Число"], "category": "math"},
+        {"name": "Sin", "name_en": "Sin", "description": "Вычисляет синус", "parameters": [{"name": "Угол", "types": ["Число"], "required": true}], "return_types": ["Число"], "category": "math"},
+        {"name": "Cos", "name_en": "Cos", "description": "Вычисляет косинус", "parameters": [{"name": "Угол", "types": ["Число"], "required": true}], "return_types": ["Число"], "category": "math"},
+        {"name": "Tan", "name_en": "Tan", "description": "Вычисляет тангенс", "parameters": [{"name": "Угол", "types": ["Число"], "required": true}], "return_types": ["Число"], "category": "math"},
+        {"name": "ASin", "name_en": "ASin", "description": "Вычисляет арксинус", "parameters": [{"name": "Число", "types": ["Число"], "required": true}], "return_types": ["Число"], "category": "math"},
+        {"name": "ACos", "name_en": "ACos", "description": "Вычисляет арккосинус", "parameters": [{"name": "Число", "types": ["Число"], "required": true}], "return_types": ["Число"], "category": "math"},
+        {"name": "ATan", "name_en": "ATan", "description": "Вычисляет арктангенс", "parameters": [{"name": "Число", "types": ["Число"], "required": true}], "return_types": ["Число"], "category": "math"}
+      ]
+    },
+    {
+      "name": "Функции даты и времени",
+      "name_en": "Date and time functions",
+      "methods": [
+        {"name": "ТекущаяДата", "name_en": "CurrentDate", "description": "Возвращает текущую дату сеанса", "parameters": [], "return_types": ["Дата"], "category": "date"},
+        {"name": "ТекущаяДатаСеанса", "name_en": "CurrentSessionDate", "description": "Возвращает текущую дату сеанса", "parameters": [], "return_types": ["Дата"], "category": "date"},
+        {"name": "ТекущаяУниверсальнаяДата", "name_en": "CurrentUniversalDate", "description": "Возвращает текущую универсальную дату (UTC)", "parameters": [], "return_types": ["Дата"], "category": "date"},
+        {"name": "Дата", "name_en": "Date", "description": "Создает значение даты из компонентов", "parameters": [{"name": "Год", "types": ["Число"], "required": true}, {"name": "Месяц", "types": ["Число"], "required": true}, {"name": "День", "types": ["Число"], "required": true}, {"name": "Час", "types": ["Число"], "required": false}, {"name": "Минута", "types": ["Число"], "required": false}, {"name": "Секунда", "types": ["Число"], "required": false}], "return_types": ["Дата"], "category": "date"},
+        {"name": "Год", "name_en": "Year", "description": "Извлекает год из даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Число"], "category": "date"},
+        {"name": "Месяц", "name_en": "Month", "description": "Извлекает месяц из даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Число"], "category": "date"},
+        {"name": "День", "name_en": "Day", "description": "Извлекает день из даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Число"], "category": "date"},
+        {"name": "Час", "name_en": "Hour", "description": "Извлекает час из даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Число"], "category": "date"},
+        {"name": "Минута", "name_en": "Minute", "description": "Извлекает минуту из даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Число"], "category": "date"},
+        {"name": "Секунда", "name_en": "Second", "description": "Извлекает секунду из даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Число"], "category": "date"},
+        {"name": "ДеньГода", "name_en": "DayOfYear", "description": "Возвращает порядковый номер дня в году", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Число"], "category": "date"},
+        {"name": "ДеньНедели", "name_en": "WeekDay", "description": "Возвращает день недели (1-7)", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Число"], "category": "date"},
+        {"name": "НеделяГода", "name_en": "WeekOfYear", "description": "Возвращает номер недели в году", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Число"], "category": "date"},
+        {"name": "НачалоГода", "name_en": "BegOfYear", "description": "Возвращает начало года для даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Дата"], "category": "date"},
+        {"name": "КонецГода", "name_en": "EndOfYear", "description": "Возвращает конец года для даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Дата"], "category": "date"},
+        {"name": "НачалоКвартала", "name_en": "BegOfQuarter", "description": "Возвращает начало квартала для даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Дата"], "category": "date"},
+        {"name": "КонецКвартала", "name_en": "EndOfQuarter", "description": "Возвращает конец квартала для даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Дата"], "category": "date"},
+        {"name": "НачалоМесяца", "name_en": "BegOfMonth", "description": "Возвращает начало месяца для даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Дата"], "category": "date"},
+        {"name": "КонецМесяца", "name_en": "EndOfMonth", "description": "Возвращает конец месяца для даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Дата"], "category": "date"},
+        {"name": "НачалоНедели", "name_en": "BegOfWeek", "description": "Возвращает начало недели для даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Дата"], "category": "date"},
+        {"name": "КонецНедели", "name_en": "EndOfWeek", "description": "Возвращает конец недели для даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Дата"], "category": "date"},
+        {"name": "НачалоДня", "name_en": "BegOfDay", "description": "Возвращает начало дня для даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Дата"], "category": "date"},
+        {"name": "КонецДня", "name_en": "EndOfDay", "description": "Возвращает конец дня для даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Дата"], "category": "date"},
+        {"name": "НачалоЧаса", "name_en": "BegOfHour", "description": "Возвращает начало часа для даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Дата"], "category": "date"},
+        {"name": "КонецЧаса", "name_en": "EndOfHour", "description": "Возвращает конец часа для даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Дата"], "category": "date"},
+        {"name": "НачалоМинуты", "name_en": "BegOfMinute", "description": "Возвращает начало минуты для даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Дата"], "category": "date"},
+        {"name": "КонецМинуты", "name_en": "EndOfMinute", "description": "Возвращает конец минуты для даты", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}], "return_types": ["Дата"], "category": "date"},
+        {"name": "ДобавитьМесяц", "name_en": "AddMonth", "description": "Добавляет указанное число месяцев к дате", "parameters": [{"name": "Дата", "types": ["Дата"], "required": true}, {"name": "ЧислоМесяцев", "types": ["Число"], "required": true}], "return_types": ["Дата"], "category": "date"}
+      ]
+    },
+    {
+      "name": "Функции работы с типами",
+      "name_en": "Type functions",
+      "methods": [
+        {"name": "Тип", "name_en": "Type", "description": "Возвращает тип по имени", "parameters": [{"name": "ИмяТипа", "types": ["Строка"], "required": true}], "return_types": ["Тип"], "category": "type"},
+        {"name": "ТипЗнч", "name_en": "TypeOf", "description": "Возвращает тип значения", "parameters": [{"name": "Значение", "types": ["Произвольный"], "required": true}], "return_types": ["Тип"], "category": "type"},
+        {"name": "Строка", "name_en": "String", "description": "Преобразует значение в строку", "parameters": [{"name": "Значение", "types": ["Произвольный"], "required": true}], "return_types": ["Строка"], "category": "type"},
+        {"name": "Число", "name_en": "Number", "description": "Преобразует значение в число", "parameters": [{"name": "Значение", "types": ["Строка", "Булево"], "required": true}], "return_types": ["Число"], "category": "type"},
+        {"name": "Булево", "name_en": "Boolean", "description": "Преобразует значение в булево", "parameters": [{"name": "Значение", "types": ["Число", "Строка"], "required": true}], "return_types": ["Булево"], "category": "type"},
+        {"name": "ЗначениеЗаполнено", "name_en": "ValueIsFilled", "description": "Проверяет, заполнено ли значение", "parameters": [{"name": "Значение", "types": ["Произвольный"], "required": true}], "return_types": ["Булево"], "category": "type"},
+        {"name": "ЗначениеВСтрокуВнутр", "name_en": "ValueToStringInternal", "description": "Преобразует значение во внутреннее строковое представление", "parameters": [{"name": "Значение", "types": ["Произвольный"], "required": true}], "return_types": ["Строка"], "category": "type"},
+        {"name": "ЗначениеИзСтрокиВнутр", "name_en": "ValueFromStringInternal", "description": "Восстанавливает значение из внутреннего представления", "parameters": [{"name": "Строка", "types": ["Строка"], "required": true}], "return_types": ["Произвольный"], "category": "type"},
+        {"name": "XMLСтрока", "name_en": "XMLString", "description": "Преобразует значение в XML-строку", "parameters": [{"name": "Значение", "types": ["Произвольный"], "required": true}], "return_types": ["Строка"], "category": "type"},
+        {"name": "XMLЗначение", "name_en": "XMLValue", "description": "Восстанавливает значение из XML-строки", "parameters": [{"name": "Тип", "types": ["Тип"], "required": true}, {"name": "Строка", "types": ["Строка"], "required": true}], "return_types": ["Произвольный"], "category": "type"}
+      ]
+    },
+    {
+      "name": "Общие функции",
+      "name_en": "Common functions",
+      "methods": [
+        {"name": "Сообщить", "name_en": "Message", "description": "Выводит сообщение пользователю", "parameters": [{"name": "ТекстСообщения", "types": ["Строка"], "required": true}, {"name": "Статус", "types": ["СтатусСообщения"], "required": false}], "return_types": [], "category": "message"},
+        {"name": "Предупреждение", "name_en": "DoMessageBox", "description": "Выводит модальное предупреждение", "parameters": [{"name": "ТекстПредупреждения", "types": ["Строка"], "required": true}, {"name": "Таймаут", "types": ["Число"], "required": false}], "return_types": [], "category": "dialog", "available_contexts": ["client"]},
+        {"name": "Вопрос", "name_en": "DoQueryBox", "description": "Выводит модальный вопрос с вариантами ответа", "parameters": [{"name": "ТекстВопроса", "types": ["Строка"], "required": true}, {"name": "Кнопки", "types": ["РежимДиалогаВопрос"], "required": true}, {"name": "Таймаут", "types": ["Число"], "required": false}], "return_types": ["КодВозвратаДиалога"], "category": "dialog", "available_contexts": ["client"]},
+        {"name": "ПоказатьВопрос", "name_en": "ShowQueryBox", "description": "Показывает немодальный вопрос", "parameters": [{"name": "ОписаниеОповещения", "types": ["ОписаниеОповещения"], "required": true}, {"name": "ТекстВопроса", "types": ["Строка"], "required": true}, {"name": "Кнопки", "types": ["РежимДиалогаВопрос"], "required": true}], "return_types": [], "category": "dialog", "available_contexts": ["client"]},
+        {"name": "ПоказатьПредупреждение", "name_en": "ShowMessageBox", "description": "Показывает немодальное предупреждение", "parameters": [{"name": "ОписаниеОповещения", "types": ["ОписаниеОповещения"], "required": false}, {"name": "ТекстПредупреждения", "types": ["Строка"], "required": true}], "return_types": [], "category": "dialog", "available_contexts": ["client"]},
+        {"name": "ПоказатьОповещениеПользователя", "name_en": "ShowUserNotification", "description": "Показывает всплывающее оповещение", "parameters": [{"name": "Заголовок", "types": ["Строка"], "required": false}, {"name": "НавигационнаяСсылка", "types": ["Строка"], "required": false}, {"name": "Пояснение", "types": ["Строка"], "required": false}, {"name": "Картинка", "types": ["Картинка"], "required": false}], "return_types": [], "category": "notification", "available_contexts": ["client"]},
+        {"name": "Формат", "name_en": "Format", "description": "Форматирует значение по строке форматирования", "parameters": [{"name": "Значение", "types": ["Число", "Дата", "Булево"], "required": true}, {"name": "СтрокаФормата", "types": ["Строка"], "required": true}], "return_types": ["Строка"], "category": "common"},
+        {"name": "ОписаниеОшибки", "name_en": "ErrorDescription", "description": "Возвращает описание текущей ошибки", "parameters": [], "return_types": ["Строка"], "category": "common"},
+        {"name": "ИнформацияОбОшибке", "name_en": "ErrorInfo", "description": "Возвращает информацию о текущей ошибке", "parameters": [], "return_types": ["ИнформацияОбОшибке"], "category": "common"},
+        {"name": "ВызватьИсключение", "name_en": "Raise", "description": "Генерирует исключение", "parameters": [{"name": "ОписаниеИсключения", "types": ["Строка"], "required": true}], "return_types": [], "category": "common"},
+        {"name": "ПолучитьСообщенияПользователю", "name_en": "GetUserMessages", "description": "Возвращает массив накопленных сообщений", "parameters": [{"name": "Очистить", "types": ["Булево"], "required": false}], "return_types": ["Массив"], "category": "message"},
+        {"name": "ПолучитьФорму", "name_en": "GetForm", "description": "Получает управляемую форму", "parameters": [{"name": "ИмяФормы", "types": ["Строка"], "required": true}, {"name": "Владелец", "types": ["Форма"], "required": false}, {"name": "КлючУникальности", "types": ["Произвольный"], "required": false}], "return_types": ["Форма"], "category": "common"},
+        {"name": "ОткрытьФорму", "name_en": "OpenForm", "description": "Открывает управляемую форму", "parameters": [{"name": "ИмяФормы", "types": ["Строка"], "required": true}, {"name": "Параметры", "types": ["Структура"], "required": false}, {"name": "Владелец", "types": ["Форма"], "required": false}], "return_types": ["Форма"], "category": "common", "available_contexts": ["client"]}
+      ]
+    }
+  ]
+}

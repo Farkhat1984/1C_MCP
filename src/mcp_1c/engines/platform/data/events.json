@@ -1,0 +1,310 @@
+{
+  "version": "8.3.24",
+  "events": [
+    {
+      "name": "ПередЗаписью",
+      "name_en": "BeforeWrite",
+      "description": "Вызывается перед записью объекта в базу данных",
+      "category": "object",
+      "object_types": ["Справочник", "Документ", "ПланВидовХарактеристик", "ПланСчетов", "ПланВидовРасчета", "БизнесПроцесс", "Задача"],
+      "parameters": [{"name": "Отказ", "types": ["Булево"], "direction": "in_out", "description": "Признак отказа от записи"}],
+      "execution_context": "server",
+      "can_cancel": true,
+      "cancel_parameter": "Отказ",
+      "execution_order": 1,
+      "examples": ["Процедура ПередЗаписью(Отказ)\n    Если НЕ ЗначениеЗаполнено(Наименование) Тогда\n        Отказ = Истина;\n        Сообщить(\"Не заполнено наименование\");\n    КонецЕсли;\nКонецПроцедуры"]
+    },
+    {
+      "name": "ПриЗаписи",
+      "name_en": "OnWrite",
+      "description": "Вызывается при записи объекта (в транзакции)",
+      "category": "object",
+      "object_types": ["Справочник", "Документ", "ПланВидовХарактеристик", "ПланСчетов", "ПланВидовРасчета", "БизнесПроцесс", "Задача"],
+      "parameters": [{"name": "Отказ", "types": ["Булево"], "direction": "in_out", "description": "Признак отказа от записи"}],
+      "execution_context": "server",
+      "can_cancel": true,
+      "cancel_parameter": "Отказ",
+      "execution_order": 2,
+      "notes": ["Выполняется в транзакции записи", "Изменения БД можно отменить через Отказ"]
+    },
+    {
+      "name": "ПриКопировании",
+      "name_en": "OnCopy",
+      "description": "Вызывается при копировании объекта",
+      "category": "object",
+      "object_types": ["Справочник", "Документ", "ПланВидовХарактеристик", "ПланСчетов", "БизнесПроцесс", "Задача"],
+      "parameters": [{"name": "ОбъектКопирования", "types": ["СправочникОбъект", "ДокументОбъект"], "description": "Исходный объект"}],
+      "execution_context": "server",
+      "can_cancel": false,
+      "execution_order": 0
+    },
+    {
+      "name": "ОбработкаЗаполнения",
+      "name_en": "Filling",
+      "description": "Вызывается при заполнении объекта на основании",
+      "category": "object",
+      "object_types": ["Справочник", "Документ", "БизнесПроцесс", "Задача"],
+      "parameters": [
+        {"name": "ДанныеЗаполнения", "types": ["Структура", "СправочникСсылка", "ДокументСсылка"], "description": "Данные для заполнения"},
+        {"name": "СтандартнаяОбработка", "types": ["Булево"], "direction": "in_out", "description": "Признак стандартной обработки"}
+      ],
+      "execution_context": "server",
+      "can_cancel": false,
+      "execution_order": 0
+    },
+    {
+      "name": "ОбработкаПроверкиЗаполнения",
+      "name_en": "FillCheckProcessing",
+      "description": "Вызывается при проверке заполнения реквизитов",
+      "category": "object",
+      "object_types": ["Справочник", "Документ", "ПланВидовХарактеристик", "ПланСчетов", "БизнесПроцесс", "Задача"],
+      "parameters": [
+        {"name": "Отказ", "types": ["Булево"], "direction": "in_out", "description": "Признак отказа"},
+        {"name": "ПроверяемыеРеквизиты", "types": ["Массив"], "direction": "in_out", "description": "Массив проверяемых реквизитов"}
+      ],
+      "execution_context": "server",
+      "can_cancel": true,
+      "cancel_parameter": "Отказ",
+      "execution_order": 0
+    },
+    {
+      "name": "ПередУдалением",
+      "name_en": "BeforeDelete",
+      "description": "Вызывается перед удалением объекта",
+      "category": "object",
+      "object_types": ["Справочник", "Документ", "ПланВидовХарактеристик", "ПланСчетов", "ПланВидовРасчета", "БизнесПроцесс", "Задача"],
+      "parameters": [{"name": "Отказ", "types": ["Булево"], "direction": "in_out", "description": "Признак отказа от удаления"}],
+      "execution_context": "server",
+      "can_cancel": true,
+      "cancel_parameter": "Отказ",
+      "execution_order": 1
+    },
+    {
+      "name": "ОбработкаПроведения",
+      "name_en": "Posting",
+      "description": "Вызывается при проведении документа",
+      "category": "object",
+      "object_types": ["Документ"],
+      "parameters": [
+        {"name": "Отказ", "types": ["Булево"], "direction": "in_out", "description": "Признак отказа от проведения"},
+        {"name": "РежимПроведения", "types": ["РежимПроведенияДокумента"], "description": "Режим проведения (оперативный/неоперативный)"}
+      ],
+      "execution_context": "server",
+      "can_cancel": true,
+      "cancel_parameter": "Отказ",
+      "execution_order": 3,
+      "examples": ["Процедура ОбработкаПроведения(Отказ, РежимПроведения)\n    Движения.РегистрНакопления.Записывать = Истина;\n    Для Каждого СтрокаТЧ Из Товары Цикл\n        Движение = Движения.РегистрНакопления.Добавить();\n        Движение.ВидДвижения = ВидДвиженияНакопления.Приход;\n        Движение.Период = Дата;\n        Движение.Номенклатура = СтрокаТЧ.Номенклатура;\n        Движение.Количество = СтрокаТЧ.Количество;\n    КонецЦикла;\nКонецПроцедуры"]
+    },
+    {
+      "name": "ОбработкаУдаленияПроведения",
+      "name_en": "UndoPosting",
+      "description": "Вызывается при отмене проведения документа",
+      "category": "object",
+      "object_types": ["Документ"],
+      "parameters": [{"name": "Отказ", "types": ["Булево"], "direction": "in_out", "description": "Признак отказа от отмены проведения"}],
+      "execution_context": "server",
+      "can_cancel": true,
+      "cancel_parameter": "Отказ",
+      "execution_order": 3
+    },
+    {
+      "name": "ПриСозданииНаСервере",
+      "name_en": "OnCreateAtServer",
+      "description": "Вызывается при создании формы на сервере",
+      "category": "form",
+      "object_types": ["Форма"],
+      "parameters": [
+        {"name": "Отказ", "types": ["Булево"], "direction": "in_out", "description": "Признак отказа от создания формы"},
+        {"name": "СтандартнаяОбработка", "types": ["Булево"], "direction": "in_out", "description": "Признак стандартной обработки"}
+      ],
+      "execution_context": "server",
+      "can_cancel": true,
+      "cancel_parameter": "Отказ",
+      "execution_order": 1
+    },
+    {
+      "name": "ПриОткрытии",
+      "name_en": "OnOpen",
+      "description": "Вызывается при открытии формы на клиенте",
+      "category": "form",
+      "object_types": ["Форма"],
+      "parameters": [{"name": "Отказ", "types": ["Булево"], "direction": "in_out", "description": "Признак отказа от открытия формы"}],
+      "execution_context": "client",
+      "can_cancel": true,
+      "cancel_parameter": "Отказ",
+      "execution_order": 2
+    },
+    {
+      "name": "ПриЧтенииНаСервере",
+      "name_en": "OnReadAtServer",
+      "description": "Вызывается при чтении объекта в форму на сервере",
+      "category": "form",
+      "object_types": ["Форма"],
+      "parameters": [{"name": "ТекущийОбъект", "types": ["СправочникОбъект", "ДокументОбъект"], "description": "Читаемый объект"}],
+      "execution_context": "server",
+      "can_cancel": false,
+      "execution_order": 0
+    },
+    {
+      "name": "ПередЗаписьюНаСервере",
+      "name_en": "BeforeWriteAtServer",
+      "description": "Вызывается перед записью объекта из формы на сервере",
+      "category": "form",
+      "object_types": ["Форма"],
+      "parameters": [
+        {"name": "Отказ", "types": ["Булево"], "direction": "in_out", "description": "Признак отказа от записи"},
+        {"name": "ТекущийОбъект", "types": ["СправочникОбъект", "ДокументОбъект"], "description": "Записываемый объект"},
+        {"name": "ПараметрыЗаписи", "types": ["Структура"], "description": "Параметры записи"}
+      ],
+      "execution_context": "server",
+      "can_cancel": true,
+      "cancel_parameter": "Отказ",
+      "execution_order": 1
+    },
+    {
+      "name": "ПослеЗаписиНаСервере",
+      "name_en": "AfterWriteAtServer",
+      "description": "Вызывается после записи объекта из формы на сервере",
+      "category": "form",
+      "object_types": ["Форма"],
+      "parameters": [
+        {"name": "ТекущийОбъект", "types": ["СправочникОбъект", "ДокументОбъект"], "description": "Записанный объект"},
+        {"name": "ПараметрыЗаписи", "types": ["Структура"], "description": "Параметры записи"}
+      ],
+      "execution_context": "server",
+      "can_cancel": false,
+      "execution_order": 3
+    },
+    {
+      "name": "ПриЗаписиНаСервере",
+      "name_en": "OnWriteAtServer",
+      "description": "Вызывается при записи объекта из формы на сервере (в транзакции)",
+      "category": "form",
+      "object_types": ["Форма"],
+      "parameters": [
+        {"name": "Отказ", "types": ["Булево"], "direction": "in_out", "description": "Признак отказа от записи"},
+        {"name": "ТекущийОбъект", "types": ["СправочникОбъект", "ДокументОбъект"], "description": "Записываемый объект"},
+        {"name": "ПараметрыЗаписи", "types": ["Структура"], "description": "Параметры записи"}
+      ],
+      "execution_context": "server",
+      "can_cancel": true,
+      "cancel_parameter": "Отказ",
+      "execution_order": 2
+    },
+    {
+      "name": "ПослеЗаписи",
+      "name_en": "AfterWrite",
+      "description": "Вызывается после успешной записи на клиенте",
+      "category": "form",
+      "object_types": ["Форма"],
+      "parameters": [{"name": "ПараметрыЗаписи", "types": ["Структура"], "description": "Параметры записи"}],
+      "execution_context": "client",
+      "can_cancel": false,
+      "execution_order": 4
+    },
+    {
+      "name": "ПриЗакрытии",
+      "name_en": "OnClose",
+      "description": "Вызывается при закрытии формы",
+      "category": "form",
+      "object_types": ["Форма"],
+      "parameters": [{"name": "ЗавершениеРаботы", "types": ["Булево"], "description": "Признак завершения работы приложения"}],
+      "execution_context": "client",
+      "can_cancel": false,
+      "execution_order": 0
+    },
+    {
+      "name": "ОбработкаОповещения",
+      "name_en": "NotificationProcessing",
+      "description": "Вызывается при получении оповещения формой",
+      "category": "form",
+      "object_types": ["Форма"],
+      "parameters": [
+        {"name": "ИмяСобытия", "types": ["Строка"], "description": "Имя события оповещения"},
+        {"name": "Параметр", "types": ["Произвольный"], "description": "Параметр оповещения"},
+        {"name": "Источник", "types": ["Произвольный"], "description": "Источник оповещения"}
+      ],
+      "execution_context": "client",
+      "can_cancel": false,
+      "execution_order": 0
+    },
+    {
+      "name": "ПередНачаломРаботыСистемы",
+      "name_en": "BeforeStart",
+      "description": "Вызывается перед началом работы системы",
+      "category": "session",
+      "object_types": ["Сеанс"],
+      "parameters": [{"name": "Отказ", "types": ["Булево"], "direction": "in_out", "description": "Признак отказа от запуска"}],
+      "execution_context": "client",
+      "can_cancel": true,
+      "cancel_parameter": "Отказ",
+      "execution_order": 1
+    },
+    {
+      "name": "ПриНачалеРаботыСистемы",
+      "name_en": "OnStart",
+      "description": "Вызывается при начале работы системы",
+      "category": "session",
+      "object_types": ["Сеанс"],
+      "parameters": [],
+      "execution_context": "client",
+      "can_cancel": false,
+      "execution_order": 2
+    },
+    {
+      "name": "ПередЗавершениемРаботыСистемы",
+      "name_en": "BeforeExit",
+      "description": "Вызывается перед завершением работы системы",
+      "category": "session",
+      "object_types": ["Сеанс"],
+      "parameters": [{"name": "Отказ", "types": ["Булево"], "direction": "in_out", "description": "Признак отказа от завершения"}],
+      "execution_context": "client",
+      "can_cancel": true,
+      "cancel_parameter": "Отказ",
+      "execution_order": 1
+    },
+    {
+      "name": "ПриЗавершенииРаботыСистемы",
+      "name_en": "OnExit",
+      "description": "Вызывается при завершении работы системы",
+      "category": "session",
+      "object_types": ["Сеанс"],
+      "parameters": [],
+      "execution_context": "client",
+      "can_cancel": false,
+      "execution_order": 2
+    },
+    {
+      "name": "ОбработкаПолученияФормы",
+      "name_en": "FormGetProcessing",
+      "description": "Вызывается при получении формы объекта",
+      "category": "module",
+      "object_types": ["Справочник", "Документ", "Обработка", "Отчет"],
+      "parameters": [
+        {"name": "ВидФормы", "types": ["Строка"], "description": "Вид запрашиваемой формы"},
+        {"name": "Параметры", "types": ["Структура"], "description": "Параметры формы"},
+        {"name": "ВыбраннаяФорма", "types": ["Строка"], "direction": "in_out", "description": "Имя выбранной формы"},
+        {"name": "ДополнительнаяИнформация", "types": ["Структура"], "description": "Дополнительная информация"},
+        {"name": "СтандартнаяОбработка", "types": ["Булево"], "direction": "in_out", "description": "Признак стандартной обработки"}
+      ],
+      "execution_context": "server",
+      "can_cancel": false,
+      "execution_order": 0
+    },
+    {
+      "name": "ОбработкаПолученияДанныхВыбора",
+      "name_en": "ChoiceDataGetProcessing",
+      "description": "Вызывается при получении данных выбора",
+      "category": "module",
+      "object_types": ["Справочник", "Документ", "ПланВидовХарактеристик", "ПланСчетов"],
+      "parameters": [
+        {"name": "ДанныеВыбора", "types": ["СписокЗначений"], "direction": "in_out", "description": "Данные выбора"},
+        {"name": "Параметры", "types": ["Структура"], "description": "Параметры получения данных"},
+        {"name": "СтандартнаяОбработка", "types": ["Булево"], "direction": "in_out", "description": "Признак стандартной обработки"}
+      ],
+      "execution_context": "server",
+      "can_cancel": false,
+      "execution_order": 0
+    }
+  ]
+}

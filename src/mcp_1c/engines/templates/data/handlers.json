@@ -1,0 +1,418 @@
+{
+  "templates": [
+    {
+      "id": "handler.before_write",
+      "name": "BeforeWrite Event Handler",
+      "name_ru": "Обработчик ПередЗаписью",
+      "description": "Handler for BeforeWrite event of catalog/document",
+      "description_ru": "Обработчик события ПередЗаписью справочника/документа",
+      "category": "handler",
+      "template_code": "Процедура ПередЗаписью(Отказ)\n\t\n\t// Проверка заполнения обязательных полей\n\t{{#if CheckRequiredFields}}\n\tЕсли НЕ ЗначениеЗаполнено(${RequiredField}) Тогда\n\t\tСообщениеПользователю = Новый СообщениеПользователю;\n\t\tСообщениеПользователю.Текст = \"Не заполнено поле '${RequiredFieldName}'\";\n\t\tСообщениеПользователю.Поле = \"${RequiredField}\";\n\t\tСообщениеПользователю.УстановитьДанные(ЭтотОбъект);\n\t\tСообщениеПользователю.Сообщить();\n\t\tОтказ = Истина;\n\t\tВозврат;\n\tКонецЕсли;\n\t{{/if}}\n\t\n\t${CustomCode}\n\t\nКонецПроцедуры",
+      "placeholders": [
+        {
+          "name": "CheckRequiredFields",
+          "display_name": "Проверка обязательных",
+          "description": "Добавить проверку обязательных полей",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "RequiredField",
+          "display_name": "Обязательное поле",
+          "description": "Имя обязательного поля",
+          "type": "identifier",
+          "required": false
+        },
+        {
+          "name": "RequiredFieldName",
+          "display_name": "Название поля",
+          "description": "Отображаемое название поля",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "CustomCode",
+          "display_name": "Дополнительный код",
+          "description": "Пользовательский код обработчика",
+          "type": "code_block",
+          "required": false,
+          "default_value": "// Ваш код здесь"
+        }
+      ],
+      "tags": ["handler", "before_write", "ПередЗаписью", "событие", "проверка"],
+      "use_cases": ["Валидация данных", "Проверка перед записью", "Заполнение полей"],
+      "applicable_module_types": ["ObjectModule"],
+      "examples": [
+        {
+          "description": "Проверка заполнения контрагента",
+          "values": {
+            "CheckRequiredFields": "true",
+            "RequiredField": "Контрагент",
+            "RequiredFieldName": "Контрагент",
+            "CustomCode": "// Дополнительные проверки"
+          }
+        }
+      ]
+    },
+    {
+      "id": "handler.on_write",
+      "name": "OnWrite Event Handler",
+      "name_ru": "Обработчик ПриЗаписи",
+      "description": "Handler for OnWrite event",
+      "description_ru": "Обработчик события ПриЗаписи",
+      "category": "handler",
+      "template_code": "Процедура ПриЗаписи(Отказ)\n\t\n\t{{#if UpdateRelated}}\n\t// Обновление связанных данных\n\tЕсли НЕ Отказ Тогда\n\t\t${UpdateCode}\n\tКонецЕсли;\n\t{{/if}}\n\t\n\t${CustomCode}\n\t\nКонецПроцедуры",
+      "placeholders": [
+        {
+          "name": "UpdateRelated",
+          "display_name": "Обновить связанные",
+          "description": "Добавить обновление связанных данных",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "UpdateCode",
+          "display_name": "Код обновления",
+          "type": "code_block",
+          "required": false
+        },
+        {
+          "name": "CustomCode",
+          "display_name": "Дополнительный код",
+          "type": "code_block",
+          "required": false,
+          "default_value": "// Ваш код здесь"
+        }
+      ],
+      "tags": ["handler", "on_write", "ПриЗаписи", "событие"],
+      "use_cases": ["Действия при записи", "Обновление связанных данных"],
+      "applicable_module_types": ["ObjectModule"]
+    },
+    {
+      "id": "handler.filling",
+      "name": "Filling Event Handler",
+      "name_ru": "Обработчик ОбработкаЗаполнения",
+      "description": "Handler for Filling event",
+      "description_ru": "Обработчик события ОбработкаЗаполнения",
+      "category": "handler",
+      "template_code": "Процедура ОбработкаЗаполнения(ДанныеЗаполнения, ТекстЗаполнения, СтандартнаяОбработка)\n\t\n\tЕсли ТипЗнч(ДанныеЗаполнения) = Тип(\"${FillingDataType}\") Тогда\n\t\t\n\t\t${FillingCode}\n\t\t\n\tИначеЕсли ТипЗнч(ДанныеЗаполнения) = Тип(\"Структура\") Тогда\n\t\t\n\t\t// Заполнение из структуры\n\t\tЗаполнитьЗначенияСвойств(ЭтотОбъект, ДанныеЗаполнения);\n\t\t\n\tКонецЕсли;\n\t\n\t{{#if SetDefaults}}\n\t// Установка значений по умолчанию\n\t${DefaultsCode}\n\t{{/if}}\n\t\nКонецПроцедуры",
+      "placeholders": [
+        {
+          "name": "FillingDataType",
+          "display_name": "Тип данных заполнения",
+          "description": "Тип данных для заполнения (например, СправочникСсылка.Контрагенты)",
+          "type": "type_name",
+          "required": true
+        },
+        {
+          "name": "FillingCode",
+          "display_name": "Код заполнения",
+          "description": "Код заполнения из данных",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "SetDefaults",
+          "display_name": "Установить умолчания",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "DefaultsCode",
+          "display_name": "Код умолчаний",
+          "type": "code_block",
+          "required": false
+        }
+      ],
+      "tags": ["handler", "filling", "ОбработкаЗаполнения", "заполнение", "ввод на основании"],
+      "use_cases": ["Ввод на основании", "Заполнение по умолчанию", "Копирование данных"],
+      "applicable_module_types": ["ObjectModule"]
+    },
+    {
+      "id": "handler.posting",
+      "name": "Posting Event Handler",
+      "name_ru": "Обработчик ОбработкаПроведения",
+      "description": "Handler for Document Posting event",
+      "description_ru": "Обработчик события ОбработкаПроведения документа",
+      "category": "handler",
+      "template_code": "Процедура ОбработкаПроведения(Отказ, РежимПроведения)\n\t\n\t// Инициализация движений\n\t${MovementsInit}\n\t\n\t// Запрос данных для движений\n\tЗапрос = Новый Запрос;\n\tЗапрос.Текст = \n\t\"${QueryText}\";\n\t\n\tЗапрос.УстановитьПараметр(\"Ссылка\", Ссылка);\n\t\n\tРезультат = Запрос.Выполнить();\n\tВыборка = Результат.Выбрать();\n\t\n\tПока Выборка.Следующий() Цикл\n\t\t\n\t\t${MovementCode}\n\t\t\nКонецЦикла;\n\t\nКонецПроцедуры",
+      "placeholders": [
+        {
+          "name": "MovementsInit",
+          "display_name": "Инициализация движений",
+          "description": "Код инициализации наборов записей регистров",
+          "type": "code_block",
+          "required": true
+        },
+        {
+          "name": "QueryText",
+          "display_name": "Текст запроса",
+          "description": "Запрос для получения данных движений",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "MovementCode",
+          "display_name": "Код движений",
+          "description": "Код формирования движений из выборки",
+          "type": "code_block",
+          "required": true
+        }
+      ],
+      "tags": ["handler", "posting", "ОбработкаПроведения", "проведение", "документ", "движения"],
+      "use_cases": ["Проведение документа", "Формирование движений"],
+      "applicable_module_types": ["ObjectModule"],
+      "examples": [
+        {
+          "description": "Простое проведение по регистру накопления",
+          "values": {
+            "MovementsInit": "Движения.ТоварыНаСкладах.Записывать = Истина;",
+            "QueryText": "ВЫБРАТЬ\\n\\tТовары.Номенклатура,\\n\\tТовары.Количество,\\n\\tДок.Склад\\nИЗ\\n\\tДокумент.ПриходТовара.Товары КАК Товары\\n\\tВНУТРЕННЕЕ СОЕДИНЕНИЕ Документ.ПриходТовара КАК Док\\n\\tПО Товары.Ссылка = Док.Ссылка\\nГДЕ\\n\\tТовары.Ссылка = &Ссылка",
+            "MovementCode": "Движение = Движения.ТоварыНаСкладах.Добавить();\\nДвижение.ВидДвижения = ВидДвиженияНакопления.Приход;\\nДвижение.Период = Дата;\\nДвижение.Номенклатура = Выборка.Номенклатура;\\nДвижение.Склад = Выборка.Склад;\\nДвижение.Количество = Выборка.Количество;"
+          }
+        }
+      ]
+    },
+    {
+      "id": "handler.undo_posting",
+      "name": "UndoPosting Event Handler",
+      "name_ru": "Обработчик ОбработкаУдаленияПроведения",
+      "description": "Handler for UndoPosting event",
+      "description_ru": "Обработчик события ОбработкаУдаленияПроведения",
+      "category": "handler",
+      "template_code": "Процедура ОбработкаУдаленияПроведения(Отказ)\n\t\n\t// Очистка движений выполняется автоматически\n\t// Дополнительная обработка при необходимости:\n\t${CustomCode}\n\t\nКонецПроцедуры",
+      "placeholders": [
+        {
+          "name": "CustomCode",
+          "display_name": "Дополнительный код",
+          "type": "code_block",
+          "required": false,
+          "default_value": "// Ваш код здесь"
+        }
+      ],
+      "tags": ["handler", "undo_posting", "ОбработкаУдаленияПроведения", "отмена проведения"],
+      "use_cases": ["Отмена проведения", "Очистка связанных данных"],
+      "applicable_module_types": ["ObjectModule"]
+    },
+    {
+      "id": "handler.before_delete",
+      "name": "BeforeDelete Event Handler",
+      "name_ru": "Обработчик ПередУдалением",
+      "description": "Handler for BeforeDelete event",
+      "description_ru": "Обработчик события ПередУдалением",
+      "category": "handler",
+      "template_code": "Процедура ПередУдалением(Отказ)\n\t\n\t{{#if CheckReferences}}\n\t// Проверка ссылок на объект\n\tПоискСсылок = Новый Массив;\n\tПоискСсылок.Добавить(Ссылка);\n\t\n\tНайденныеСсылки = НайтиПоСсылкам(ПоискСсылок);\n\tЕсли НайденныеСсылки.Количество() > 0 Тогда\n\t\tСообщениеПользователю = Новый СообщениеПользователю;\n\t\tСообщениеПользователю.Текст = \"Невозможно удалить объект, на него есть ссылки\";\n\t\tСообщениеПользователю.Сообщить();\n\t\tОтказ = Истина;\n\t\tВозврат;\n\tКонецЕсли;\n\t{{/if}}\n\t\n\t${CustomCode}\n\t\nКонецПроцедуры",
+      "placeholders": [
+        {
+          "name": "CheckReferences",
+          "display_name": "Проверка ссылок",
+          "description": "Добавить проверку ссылок",
+          "type": "boolean",
+          "required": false,
+          "default_value": "true"
+        },
+        {
+          "name": "CustomCode",
+          "display_name": "Дополнительный код",
+          "type": "code_block",
+          "required": false,
+          "default_value": "// Ваш код здесь"
+        }
+      ],
+      "tags": ["handler", "before_delete", "ПередУдалением", "удаление", "проверка"],
+      "use_cases": ["Контроль удаления", "Проверка ссылок"],
+      "applicable_module_types": ["ObjectModule"]
+    },
+    {
+      "id": "handler.filling_check",
+      "name": "FillingCheck Event Handler",
+      "name_ru": "Обработчик ОбработкаПроверкиЗаполнения",
+      "description": "Handler for FillingCheck event",
+      "description_ru": "Обработчик события ОбработкаПроверкиЗаполнения",
+      "category": "handler",
+      "template_code": "Процедура ОбработкаПроверкиЗаполнения(Отказ, ПроверяемыеРеквизиты)\n\t\n\t{{#if ExcludeFields}}\n\t// Исключение реквизитов из проверки\n\tИндекс = ПроверяемыеРеквизиты.Найти(\"${ExcludedField}\");\n\tЕсли Индекс <> Неопределено Тогда\n\t\tПроверяемыеРеквизиты.Удалить(Индекс);\n\tКонецЕсли;\n\t{{/if}}\n\t\n\t{{#if CustomValidation}}\n\t// Дополнительная проверка\n\t${ValidationCode}\n\t{{/if}}\n\t\nКонецПроцедуры",
+      "placeholders": [
+        {
+          "name": "ExcludeFields",
+          "display_name": "Исключить поля",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "ExcludedField",
+          "display_name": "Исключаемое поле",
+          "type": "identifier",
+          "required": false
+        },
+        {
+          "name": "CustomValidation",
+          "display_name": "Доп. валидация",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "ValidationCode",
+          "display_name": "Код валидации",
+          "type": "code_block",
+          "required": false
+        }
+      ],
+      "tags": ["handler", "filling_check", "ОбработкаПроверкиЗаполнения", "проверка", "валидация"],
+      "use_cases": ["Проверка заполнения", "Условная проверка"],
+      "applicable_module_types": ["ObjectModule"]
+    },
+    {
+      "id": "handler.on_copy",
+      "name": "OnCopy Event Handler",
+      "name_ru": "Обработчик ПриКопировании",
+      "description": "Handler for OnCopy event",
+      "description_ru": "Обработчик события ПриКопировании",
+      "category": "handler",
+      "template_code": "Процедура ПриКопировании(ОбъектКопирования)\n\t\n\t// Очистка полей, которые не должны копироваться\n\t{{#if ClearFields}}\n\t${FieldName} = ${DefaultValue};\n\t{{/if}}\n\t\n\t{{#if ClearTabularSection}}\n\t// Очистка табличной части\n\t${TabularSectionName}.Очистить();\n\t{{/if}}\n\t\n\t${CustomCode}\n\t\nКонецПроцедуры",
+      "placeholders": [
+        {
+          "name": "ClearFields",
+          "display_name": "Очистить поля",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "FieldName",
+          "display_name": "Имя поля",
+          "type": "identifier",
+          "required": false
+        },
+        {
+          "name": "DefaultValue",
+          "display_name": "Значение по умолчанию",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "ClearTabularSection",
+          "display_name": "Очистить ТЧ",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "TabularSectionName",
+          "display_name": "Имя ТЧ",
+          "type": "identifier",
+          "required": false
+        },
+        {
+          "name": "CustomCode",
+          "display_name": "Дополнительный код",
+          "type": "code_block",
+          "required": false,
+          "default_value": "// Ваш код здесь"
+        }
+      ],
+      "tags": ["handler", "on_copy", "ПриКопировании", "копирование"],
+      "use_cases": ["Копирование объекта", "Очистка при копировании"],
+      "applicable_module_types": ["ObjectModule"]
+    },
+    {
+      "id": "handler.presentation_get",
+      "name": "PresentationGet Event Handler",
+      "name_ru": "Обработчик ОбработкаПолученияПредставления",
+      "description": "Handler for PresentationGet event",
+      "description_ru": "Обработчик события ОбработкаПолученияПредставления",
+      "category": "handler",
+      "template_code": "Процедура ОбработкаПолученияПредставления(Данные, Представление, СтандартнаяОбработка)\n\t\n\tСтандартнаяОбработка = Ложь;\n\t\n\t{{#if UseCode}}\n\tПредставление = СтрШаблон(\"[%1] %2\", Данные.Код, Данные.Наименование);\n\t{{/if}}\n\t{{#if UseCustomFormat}}\n\tПредставление = ${FormatExpression};\n\t{{/if}}\n\t\nКонецПроцедуры",
+      "placeholders": [
+        {
+          "name": "UseCode",
+          "display_name": "Использовать код",
+          "description": "Включить код в представление",
+          "type": "boolean",
+          "required": false,
+          "default_value": "true"
+        },
+        {
+          "name": "UseCustomFormat",
+          "display_name": "Свой формат",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "FormatExpression",
+          "display_name": "Выражение формата",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "tags": ["handler", "presentation", "ОбработкаПолученияПредставления", "представление"],
+      "use_cases": ["Кастомное представление", "Формат отображения"],
+      "applicable_module_types": ["ManagerModule"]
+    },
+    {
+      "id": "handler.form_on_create",
+      "name": "Form OnCreateAtServer Handler",
+      "name_ru": "Обработчик ПриСозданииНаСервере формы",
+      "description": "Handler for form OnCreateAtServer event",
+      "description_ru": "Обработчик события ПриСозданииНаСервере формы",
+      "category": "form_handler",
+      "template_code": "&НаСервере\nПроцедура ПриСозданииНаСервере(Отказ, СтандартнаяОбработка)\n\t\n\t{{#if IsNewObject}}\n\tЕсли Объект.Ссылка.Пустая() Тогда\n\t\t// Инициализация для нового объекта\n\t\t${NewObjectCode}\n\tКонецЕсли;\n\t{{/if}}\n\t\n\t{{#if SetupVisibility}}\n\t// Настройка видимости элементов\n\t${VisibilityCode}\n\t{{/if}}\n\t\n\t{{#if FillLists}}\n\t// Заполнение списков выбора\n\t${ListsCode}\n\t{{/if}}\n\t\n\t${CustomCode}\n\t\nКонецПроцедуры",
+      "placeholders": [
+        {
+          "name": "IsNewObject",
+          "display_name": "Обработка нового",
+          "type": "boolean",
+          "required": false,
+          "default_value": "true"
+        },
+        {
+          "name": "NewObjectCode",
+          "display_name": "Код для нового",
+          "type": "code_block",
+          "required": false
+        },
+        {
+          "name": "SetupVisibility",
+          "display_name": "Настройка видимости",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "VisibilityCode",
+          "display_name": "Код видимости",
+          "type": "code_block",
+          "required": false
+        },
+        {
+          "name": "FillLists",
+          "display_name": "Заполнить списки",
+          "type": "boolean",
+          "required": false,
+          "default_value": "false"
+        },
+        {
+          "name": "ListsCode",
+          "display_name": "Код списков",
+          "type": "code_block",
+          "required": false
+        },
+        {
+          "name": "CustomCode",
+          "display_name": "Дополнительный код",
+          "type": "code_block",
+          "required": false,
+          "default_value": "// Ваш код здесь"
+        }
+      ],
+      "tags": ["form", "handler", "ПриСозданииНаСервере", "форма", "создание"],
+      "use_cases": ["Инициализация формы", "Настройка видимости", "Заполнение списков"],
+      "applicable_module_types": ["FormModule"]
+    }
+  ]
+}

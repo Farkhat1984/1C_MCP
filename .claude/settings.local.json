@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest:*)",
+      "Bash(pip install:*)",
+      "Bash(dir:*)",
+      "Bash(python:*)",
+      "Bash(tee:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Metalogic160\\Desktop\\1C_MCP"
+    ]
+  }
+}
