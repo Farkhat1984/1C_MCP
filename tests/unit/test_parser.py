@@ -368,3 +368,116 @@ class TestXmlParser:
         assert parser._get_type_folder(MetadataType.DOCUMENT) == "Documents"
         assert parser._get_type_folder(MetadataType.COMMON_MODULE) == "CommonModules"
         assert parser._get_type_folder(MetadataType.INFORMATION_REGISTER) == "InformationRegisters"
+
+    def test_parse_configuration_child_objects_format(
+        self,
+        parser: XmlParser,
+        temp_dir: Path,
+    ) -> None:
+        """Test parsing Configuration.xml in ChildObjects format (Configurator export)."""
+        # Create Configuration.xml in ChildObjects format
+        config_root = temp_dir / "ConfiguratorFormat"
+        config_root.mkdir()
+
+        config_xml = config_root / "Configuration.xml"
+        config_xml.write_text('''<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:v8="http://v8.1c.ru/8.1/data/core">
+    <Configuration uuid="test-uuid">
+        <Properties>
+            <Name>ТестоваяКонфигурация</Name>
+        </Properties>
+        <ChildObjects>
+            <Subsystem>Администрирование</Subsystem>
+            <Subsystem>Продажи</Subsystem>
+            <Catalog>Товары</Catalog>
+            <Catalog>Контрагенты</Catalog>
+            <Catalog>Склады</Catalog>
+            <Document>ПриходТовара</Document>
+            <Document>РасходТовара</Document>
+            <CommonModule>ОбщегоНазначения</CommonModule>
+            <InformationRegister>ЦеныТоваров</InformationRegister>
+            <AccumulationRegister>ОстаткиТоваров</AccumulationRegister>
+            <Enum>ТипыЦен</Enum>
+            <Report>ОстаткиНаСкладах</Report>
+        </ChildObjects>
+    </Configuration>
+</MetaDataObject>
+''', encoding="utf-8")
+
+        result = parser.parse_configuration(config_root)
+
+        # Verify all types are found
+        assert MetadataType.SUBSYSTEM.value in result
+        assert len(result[MetadataType.SUBSYSTEM.value]) == 2
+
+        assert MetadataType.CATALOG.value in result
+        assert len(result[MetadataType.CATALOG.value]) == 3
+        assert "Товары" in result[MetadataType.CATALOG.value]
+        assert "Контрагенты" in result[MetadataType.CATALOG.value]
+        assert "Склады" in result[MetadataType.CATALOG.value]
+
+        assert MetadataType.DOCUMENT.value in result
+        assert len(result[MetadataType.DOCUMENT.value]) == 2
+
+        assert MetadataType.COMMON_MODULE.value in result
+        assert "ОбщегоНазначения" in result[MetadataType.COMMON_MODULE.value]
+
+        assert MetadataType.INFORMATION_REGISTER.value in result
+        assert MetadataType.ACCUMULATION_REGISTER.value in result
+        assert MetadataType.ENUM.value in result
+        assert MetadataType.REPORT.value in result
+
+    def test_parse_document_register_records_configurator_format(
+        self,
+        parser: XmlParser,
+        temp_dir: Path,
+    ) -> None:
+        """Test parsing document register records in Configurator export format (xr:Item)."""
+        # Create document XML in Configurator export format
+        config_root = temp_dir / "ConfiguratorRegisterFormat"
+        config_root.mkdir()
+
+        # Create minimal Configuration.xml
+        config_xml = config_root / "Configuration.xml"
+        config_xml.write_text('''<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses">
+    <Configuration>
+        <Properties><Name>Тест</Name></Properties>
+        <ChildObjects>
+            <Document>ТестовыйДокумент</Document>
+        </ChildObjects>
+    </Configuration>
+</MetaDataObject>
+''', encoding="utf-8")
+
+        # Create Documents directory and document XML with xr:Item format
+        doc_dir = config_root / "Documents" / "ТестовыйДокумент"
+        doc_dir.mkdir(parents=True)
+        doc_xml = doc_dir / "ТестовыйДокумент.xml"
+        doc_xml.write_text('''<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses"
+                xmlns:xr="http://v8.1c.ru/8.3/xcf/readable"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <Document uuid="test-doc-uuid">
+        <Properties>
+            <Name>ТестовыйДокумент</Name>
+            <Synonym><item lang="ru">Тестовый документ</item></Synonym>
+            <Posting>Allow</Posting>
+            <RegisterRecords>
+                <xr:Item xsi:type="xr:MDObjectRef">InformationRegister.ТестовыйРегистр</xr:Item>
+                <xr:Item xsi:type="xr:MDObjectRef">AccumulationRegister.ОстаткиТоваров</xr:Item>
+            </RegisterRecords>
+        </Properties>
+    </Document>
+</MetaDataObject>
+''', encoding="utf-8")
+
+        obj = parser.parse_metadata_object(
+            config_root,
+            MetadataType.DOCUMENT,
+            "ТестовыйДокумент",
+        )
+
+        assert len(obj.register_records) == 2
+        assert "InformationRegister.ТестовыйРегистр" in obj.register_records
+        assert "AccumulationRegister.ОстаткиТоваров" in obj.register_records

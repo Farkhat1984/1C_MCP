@@ -53,6 +53,10 @@ class XmlParser:
         """
         Parse Configuration.xml to get list of all objects.
 
+        Supports two formats:
+        1. Legacy format: <Catalogs><item>Name</item></Catalogs>
+        2. Configurator export format: <ChildObjects><Catalog>Name</Catalog></ChildObjects>
+
         Args:
             config_path: Path to configuration root
 
@@ -70,9 +74,41 @@ class XmlParser:
 
         result: dict[str, list[str]] = {}
 
-        # Map of XML container element names (plural form) to MetadataType
-        # 1C Configuration.xml uses: <Catalogs><item>Name</item></Catalogs>
-        element_map = {
+        # Map of XML element names (singular form) for ChildObjects format
+        # Configurator export uses: <ChildObjects><Catalog>Name</Catalog></ChildObjects>
+        singular_element_map = {
+            "Catalog": MetadataType.CATALOG,
+            "Document": MetadataType.DOCUMENT,
+            "Enum": MetadataType.ENUM,
+            "ChartOfCharacteristicTypes": MetadataType.CHART_OF_CHARACTERISTIC_TYPES,
+            "ChartOfAccounts": MetadataType.CHART_OF_ACCOUNTS,
+            "ChartOfCalculationTypes": MetadataType.CHART_OF_CALCULATION_TYPES,
+            "ExchangePlan": MetadataType.EXCHANGE_PLAN,
+            "BusinessProcess": MetadataType.BUSINESS_PROCESS,
+            "Task": MetadataType.TASK,
+            "InformationRegister": MetadataType.INFORMATION_REGISTER,
+            "AccumulationRegister": MetadataType.ACCUMULATION_REGISTER,
+            "AccountingRegister": MetadataType.ACCOUNTING_REGISTER,
+            "CalculationRegister": MetadataType.CALCULATION_REGISTER,
+            "Report": MetadataType.REPORT,
+            "DataProcessor": MetadataType.DATA_PROCESSOR,
+            "Constant": MetadataType.CONSTANT,
+            "CommonModule": MetadataType.COMMON_MODULE,
+            "Subsystem": MetadataType.SUBSYSTEM,
+            "Role": MetadataType.ROLE,
+            "CommonForm": MetadataType.COMMON_FORM,
+            "CommonTemplate": MetadataType.COMMON_TEMPLATE,
+            "SessionParameter": MetadataType.SESSION_PARAMETER,
+            "FunctionalOption": MetadataType.FUNCTIONAL_OPTION,
+            "ScheduledJob": MetadataType.SCHEDULED_JOB,
+            "EventSubscription": MetadataType.EVENT_SUBSCRIPTION,
+            "HTTPService": MetadataType.HTTP_SERVICE,
+            "WebService": MetadataType.WEB_SERVICE,
+        }
+
+        # Map of XML container element names (plural form) for legacy format
+        # Legacy format uses: <Catalogs><item>Name</item></Catalogs>
+        plural_element_map = {
             "Catalogs": MetadataType.CATALOG,
             "Documents": MetadataType.DOCUMENT,
             "Enums": MetadataType.ENUM,
@@ -102,13 +138,42 @@ class XmlParser:
             "WebServices": MetadataType.WEB_SERVICE,
         }
 
-        for container_name, meta_type in element_map.items():
-            objects = self._find_items_in_container(root, container_name)
-            if objects:
-                result[meta_type.value] = objects
-                self.logger.debug(f"Found {len(objects)} {container_name}")
+        # First, try ChildObjects format (Configurator export)
+        child_objects = self._find_element_by_local_name(root, "ChildObjects")
+        if child_objects is not None:
+            self.logger.debug("Detected ChildObjects format (Configurator export)")
+            for element_name, meta_type in singular_element_map.items():
+                objects = self._find_child_objects(child_objects, element_name)
+                if objects:
+                    result[meta_type.value] = objects
+                    self.logger.debug(f"Found {len(objects)} {element_name}")
+        else:
+            # Fallback to legacy format
+            self.logger.debug("Using legacy container format")
+            for container_name, meta_type in plural_element_map.items():
+                objects = self._find_items_in_container(root, container_name)
+                if objects:
+                    result[meta_type.value] = objects
+                    self.logger.debug(f"Found {len(objects)} {container_name}")
 
         return result
+
+    def _find_child_objects(
+        self,
+        child_objects: etree._Element,
+        element_name: str,
+    ) -> list[str]:
+        """
+        Find all elements with given name inside ChildObjects.
+
+        Structure: <ChildObjects><Catalog>ObjectName</Catalog></ChildObjects>
+        """
+        results: list[str] = []
+        for child in child_objects:
+            local_name = etree.QName(child).localname
+            if local_name == element_name and child.text:
+                results.append(child.text.strip())
+        return results
 
     def _find_items_in_container(
         self,
@@ -172,6 +237,10 @@ class XmlParser:
         """
         Parse a specific metadata object XML file.
 
+        Supports two directory structures:
+        1. Configurator export: TypeFolder/ObjectName.xml + TypeFolder/ObjectName/ (modules)
+        2. Legacy/EDT format: TypeFolder/ObjectName/ObjectName.xml
+
         Args:
             config_path: Path to configuration root
             metadata_type: Type of metadata
@@ -180,12 +249,13 @@ class XmlParser:
         Returns:
             Parsed MetadataObject
         """
-        # Determine object path based on type
+        # Determine paths based on type
         type_folder = self._get_type_folder(metadata_type)
-        object_path = config_path / type_folder / object_name
+        type_folder_path = config_path / type_folder
+        object_folder = type_folder_path / object_name  # Folder for modules/forms
 
-        # Find XML file (might be .xml or in Ext folder)
-        xml_file = self._find_object_xml(object_path, object_name)
+        # Find XML file - try both structures
+        xml_file = self._find_object_xml(type_folder_path, object_folder, object_name)
 
         if not xml_file.exists():
             self.logger.warning(f"XML file not found for {metadata_type.value}.{object_name}")
@@ -193,7 +263,7 @@ class XmlParser:
                 name=object_name,
                 metadata_type=metadata_type,
                 config_path=config_path,
-                object_path=object_path,
+                object_path=object_folder,
             )
 
         self.logger.debug(f"Parsing: {xml_file}")
@@ -212,9 +282,9 @@ class XmlParser:
         # Parse structural elements
         attributes = self._parse_attributes(root)
         tabular_sections = self._parse_tabular_sections(root)
-        forms = self._parse_forms(root, object_path)
-        templates = self._parse_templates(root, object_path)
-        modules = self._find_modules(object_path, metadata_type)
+        forms = self._parse_forms(root, object_folder)
+        templates = self._parse_templates(root, object_folder)
+        modules = self._find_modules(object_folder, metadata_type)
 
         # Parse register-specific elements
         dimensions = self._parse_dimensions(root) if self._is_register(metadata_type) else []
@@ -231,7 +301,7 @@ class XmlParser:
             comment=comment,
             metadata_type=metadata_type,
             config_path=config_path,
-            object_path=object_path,
+            object_path=object_folder,
             attributes=attributes,
             tabular_sections=tabular_sections,
             forms=forms,
@@ -334,19 +404,38 @@ class XmlParser:
         }
         return folder_map.get(metadata_type, metadata_type.value + "s")
 
-    def _find_object_xml(self, object_path: Path, object_name: str) -> Path:
-        """Find the main XML file for an object."""
-        # Try direct XML file
-        direct = object_path / f"{object_name}.xml"
-        if direct.exists():
-            return direct
+    def _find_object_xml(
+        self,
+        type_folder_path: Path,
+        object_folder: Path,
+        object_name: str,
+    ) -> Path:
+        """
+        Find the main XML file for an object.
 
-        # Try in Ext folder
-        ext = object_path / "Ext" / "ObjectModule.xml"
-        if ext.exists():
-            return ext
+        Supports two structures:
+        1. Configurator export: TypeFolder/ObjectName.xml (XML next to folder)
+        2. Legacy/EDT format: TypeFolder/ObjectName/ObjectName.xml (XML inside folder)
+        """
+        # Try Configurator export format first (XML next to folder)
+        # Structure: Catalogs/Сотрудники.xml
+        configurator_xml = type_folder_path / f"{object_name}.xml"
+        if configurator_xml.exists():
+            return configurator_xml
 
-        return direct
+        # Try legacy/EDT format (XML inside folder)
+        # Structure: Catalogs/Сотрудники/Сотрудники.xml
+        legacy_xml = object_folder / f"{object_name}.xml"
+        if legacy_xml.exists():
+            return legacy_xml
+
+        # Try in Ext folder (some edge cases)
+        ext_xml = object_folder / "Ext" / "ObjectModule.xml"
+        if ext_xml.exists():
+            return ext_xml
+
+        # Return configurator format path as default (for error message)
+        return configurator_xml
 
     def _calculate_hash(self, file_path: Path) -> str:
         """Calculate MD5 hash of file."""
@@ -398,7 +487,13 @@ class XmlParser:
         root: etree._Element,
         xpath: str,
     ) -> str:
-        """Get localized string (prefer Russian, fallback to first available)."""
+        """
+        Get localized string (prefer Russian, fallback to first available).
+
+        Supports two formats:
+        1. Legacy: <Synonym><item lang="ru">Text</item></Synonym>
+        2. Configurator export: <Synonym><v8:item><v8:lang>ru</v8:lang><v8:content>Text</v8:content></v8:item></Synonym>
+        """
         # Extract element name from xpath like ".//ElementName"
         if xpath.startswith(".//"):
             element_name = xpath[3:]
@@ -411,13 +506,33 @@ class XmlParser:
 
         elem = elements[0]
 
-        # Try to find Russian version in <item> children
+        # Try Configurator export format: <v8:item><v8:lang>ru</v8:lang><v8:content>Text</v8:content></v8:item>
+        for child in elem:
+            local_name = etree.QName(child).localname
+            if local_name == "item":
+                # Check for v8:lang and v8:content children
+                lang_elem = self._find_element_by_local_name(child, "lang")
+                content_elem = self._find_element_by_local_name(child, "content")
+                if lang_elem is not None and content_elem is not None:
+                    lang = lang_elem.text.strip() if lang_elem.text else ""
+                    if lang in ("ru", "ru_RU"):
+                        return content_elem.text.strip() if content_elem.text else ""
+
+        # Try legacy format: <item lang="ru">Text</item>
         for child in elem:
             lang = child.get("lang", "") or child.get("{http://www.w3.org/XML/1998/namespace}lang", "")
             if lang in ("ru", "ru_RU"):
                 return child.text.strip() if child.text else ""
 
-        # Fallback to first child with text
+        # Fallback: try to get content from first v8:item
+        for child in elem:
+            local_name = etree.QName(child).localname
+            if local_name == "item":
+                content_elem = self._find_element_by_local_name(child, "content")
+                if content_elem is not None and content_elem.text:
+                    return content_elem.text.strip()
+
+        # Fallback to first child with direct text
         for child in elem:
             if child.text:
                 return child.text.strip()
@@ -425,17 +540,36 @@ class XmlParser:
         return ""
 
     def _parse_attributes(self, root: etree._Element) -> list[Attribute]:
-        """Parse object attributes."""
-        attributes: list[Attribute] = []
+        """
+        Parse object attributes.
 
-        # Find Attributes container, then get Attribute children
-        attrs_container = self._find_element_by_local_name(root, "Attributes")
+        Supports two formats:
+        1. Legacy: <Attributes><Attribute><Name>...</Name></Attribute></Attributes>
+        2. Configurator export: <ChildObjects><Attribute><Properties><Name>...</Name></Properties></Attribute></ChildObjects>
+        """
+        attributes: list[Attribute] = []
         attr_elements = []
-        if attrs_container is not None:
-            attr_elements = self._find_elements_by_local_name(attrs_container, "Attribute")
+
+        # Try Configurator export format first: ChildObjects/Attribute
+        child_objects = self._find_element_by_local_name(root, "ChildObjects")
+        if child_objects is not None:
+            for child in child_objects:
+                local_name = etree.QName(child).localname
+                if local_name == "Attribute":
+                    attr_elements.append(child)
+
+        # Fallback to legacy format: Attributes/Attribute
+        if not attr_elements:
+            attrs_container = self._find_element_by_local_name(root, "Attributes")
+            if attrs_container is not None:
+                attr_elements = self._find_elements_by_local_name(attrs_container, "Attribute")
 
         for attr_elem in attr_elements:
-            name_elem = self._find_element_by_local_name(attr_elem, "Name")
+            # For Configurator format, properties are in <Properties> child
+            props_elem = self._find_element_by_local_name(attr_elem, "Properties")
+            source = props_elem if props_elem is not None else attr_elem
+
+            name_elem = self._find_element_by_local_name(source, "Name")
             name = name_elem.text.strip() if name_elem is not None and name_elem.text else ""
             if not name:
                 name = attr_elem.get("name", "")
@@ -445,27 +579,55 @@ class XmlParser:
 
             attr = Attribute(
                 name=name,
-                synonym=self._get_localized_string(attr_elem, ".//Synonym"),
-                type=self._parse_type(attr_elem),
-                comment=self._get_localized_string(attr_elem, ".//Comment"),
-                indexed=self._get_bool(attr_elem, ".//Indexing", False),
+                synonym=self._get_localized_string(source, ".//Synonym"),
+                type=self._parse_type(source),
+                comment=self._get_localized_string(source, ".//Comment"),
+                indexed=self._parse_indexing(source),
             )
             attributes.append(attr)
 
         return attributes
 
-    def _parse_tabular_sections(self, root: etree._Element) -> list[TabularSection]:
-        """Parse tabular sections."""
-        sections: list[TabularSection] = []
+    def _parse_indexing(self, elem: etree._Element) -> bool:
+        """Parse indexing value from element."""
+        indexing_elem = self._find_element_by_local_name(elem, "Indexing")
+        if indexing_elem is not None and indexing_elem.text:
+            text = indexing_elem.text.strip().lower()
+            # "Index" or "IndexWithAdditionalOrder" means indexed
+            return text in ("index", "indexwithadditionalorder", "true", "1")
+        return False
 
-        # Find TabularSections container, then get TabularSection children
-        ts_container = self._find_element_by_local_name(root, "TabularSections")
+    def _parse_tabular_sections(self, root: etree._Element) -> list[TabularSection]:
+        """
+        Parse tabular sections.
+
+        Supports two formats:
+        1. Legacy: <TabularSections><TabularSection><Name>...</Name></TabularSection></TabularSections>
+        2. Configurator export: <ChildObjects><TabularSection><Properties><Name>...</Name></Properties></TabularSection></ChildObjects>
+        """
+        sections: list[TabularSection] = []
         ts_elements = []
-        if ts_container is not None:
-            ts_elements = self._find_elements_by_local_name(ts_container, "TabularSection")
+
+        # Try Configurator export format first: ChildObjects/TabularSection
+        child_objects = self._find_element_by_local_name(root, "ChildObjects")
+        if child_objects is not None:
+            for child in child_objects:
+                local_name = etree.QName(child).localname
+                if local_name == "TabularSection":
+                    ts_elements.append(child)
+
+        # Fallback to legacy format: TabularSections/TabularSection
+        if not ts_elements:
+            ts_container = self._find_element_by_local_name(root, "TabularSections")
+            if ts_container is not None:
+                ts_elements = self._find_elements_by_local_name(ts_container, "TabularSection")
 
         for ts_elem in ts_elements:
-            name_elem = self._find_element_by_local_name(ts_elem, "Name")
+            # For Configurator format, properties are in <Properties> child
+            props_elem = self._find_element_by_local_name(ts_elem, "Properties")
+            source = props_elem if props_elem is not None else ts_elem
+
+            name_elem = self._find_element_by_local_name(source, "Name")
             name = name_elem.text.strip() if name_elem is not None and name_elem.text else ""
             if not name:
                 name = ts_elem.get("name", "")
@@ -473,47 +635,100 @@ class XmlParser:
             if not name:
                 continue
 
+            # For attributes, look in TabularSection's ChildObjects
             section = TabularSection(
                 name=name,
-                synonym=self._get_localized_string(ts_elem, ".//Synonym"),
-                attributes=self._parse_attributes(ts_elem),
-                comment=self._get_localized_string(ts_elem, ".//Comment"),
+                synonym=self._get_localized_string(source, ".//Synonym"),
+                attributes=self._parse_attributes(ts_elem),  # Pass ts_elem to find its ChildObjects
+                comment=self._get_localized_string(source, ".//Comment"),
             )
             sections.append(section)
 
         return sections
 
     def _parse_forms(self, root: etree._Element, object_path: Path) -> list[Form]:
-        """Parse forms."""
+        """
+        Parse forms.
+
+        Supports three formats:
+        1. Legacy: <Forms><item>FormName</item></Forms>
+        2. Configurator export simple: <ChildObjects><Form>FormName</Form></ChildObjects>
+        3. Configurator export full: <ChildObjects><Form><Properties><Name>FormName</Name></Properties></Form></ChildObjects>
+        """
         forms: list[Form] = []
 
-        # Find Forms container, then get item children
-        forms_container = self._find_element_by_local_name(root, "Forms")
-        if forms_container is not None:
-            # Forms are listed as <item>FormName</item>
-            for child in forms_container:
+        # Try Configurator export format: ChildObjects/Form
+        child_objects = self._find_element_by_local_name(root, "ChildObjects")
+        if child_objects is not None:
+            for child in child_objects:
                 local_name = etree.QName(child).localname
-                if local_name == "item" and child.text:
-                    name = child.text.strip()
-                    if name:
-                        forms.append(Form(name=name, synonym=""))
+                if local_name == "Form":
+                    # Try simple format first: <Form>FormName</Form>
+                    if child.text and child.text.strip():
+                        forms.append(Form(name=child.text.strip(), synonym=""))
+                    else:
+                        # Try full format: <Form><Properties><Name>...</Name></Properties></Form>
+                        props = self._find_element_by_local_name(child, "Properties")
+                        source = props if props is not None else child
+                        name_elem = self._find_element_by_local_name(source, "Name")
+                        if name_elem is not None and name_elem.text:
+                            name = name_elem.text.strip()
+                            synonym = self._get_localized_string(source, ".//Synonym")
+                            forms.append(Form(name=name, synonym=synonym))
+
+        # Fallback to legacy format: Forms/item
+        if not forms:
+            forms_container = self._find_element_by_local_name(root, "Forms")
+            if forms_container is not None:
+                for child in forms_container:
+                    local_name = etree.QName(child).localname
+                    if local_name == "item" and child.text:
+                        name = child.text.strip()
+                        if name:
+                            forms.append(Form(name=name, synonym=""))
 
         return forms
 
     def _parse_templates(self, root: etree._Element, object_path: Path) -> list[Template]:
-        """Parse templates."""
+        """
+        Parse templates.
+
+        Supports three formats:
+        1. Legacy: <Templates><item>TemplateName</item></Templates>
+        2. Configurator export simple: <ChildObjects><Template>TemplateName</Template></ChildObjects>
+        3. Configurator export full: <ChildObjects><Template><Properties><Name>TemplateName</Name></Properties></Template></ChildObjects>
+        """
         templates: list[Template] = []
 
-        # Find Templates container, then get item children
-        templates_container = self._find_element_by_local_name(root, "Templates")
-        if templates_container is not None:
-            # Templates are listed as <item>TemplateName</item>
-            for child in templates_container:
+        # Try Configurator export format: ChildObjects/Template
+        child_objects = self._find_element_by_local_name(root, "ChildObjects")
+        if child_objects is not None:
+            for child in child_objects:
                 local_name = etree.QName(child).localname
-                if local_name == "item" and child.text:
-                    name = child.text.strip()
-                    if name:
-                        templates.append(Template(name=name, synonym=""))
+                if local_name == "Template":
+                    # Try simple format first: <Template>TemplateName</Template>
+                    if child.text and child.text.strip():
+                        templates.append(Template(name=child.text.strip(), synonym=""))
+                    else:
+                        # Try full format: <Template><Properties><Name>...</Name></Properties></Template>
+                        props = self._find_element_by_local_name(child, "Properties")
+                        source = props if props is not None else child
+                        name_elem = self._find_element_by_local_name(source, "Name")
+                        if name_elem is not None and name_elem.text:
+                            name = name_elem.text.strip()
+                            synonym = self._get_localized_string(source, ".//Synonym")
+                            templates.append(Template(name=name, synonym=synonym))
+
+        # Fallback to legacy format: Templates/item
+        if not templates:
+            templates_container = self._find_element_by_local_name(root, "Templates")
+            if templates_container is not None:
+                for child in templates_container:
+                    local_name = etree.QName(child).localname
+                    if local_name == "item" and child.text:
+                        name = child.text.strip()
+                        if name:
+                            templates.append(Template(name=name, synonym=""))
 
         return templates
 
@@ -560,10 +775,34 @@ class XmlParser:
         return modules
 
     def _parse_type(self, elem: etree._Element) -> str:
-        """Parse type description from element."""
+        """
+        Parse type description from element.
+
+        Supports two formats:
+        1. Legacy: <Type>String</Type>
+        2. Configurator export: <Type><v8:Type>xs:string</v8:Type></Type>
+        """
         type_elem = self._find_element_by_local_name(elem, "Type")
-        if type_elem is not None and type_elem.text:
+        if type_elem is None:
+            return "String"
+
+        # Try direct text first (legacy format)
+        if type_elem.text and type_elem.text.strip():
             return type_elem.text.strip()
+
+        # Try Configurator export format: <v8:Type>xs:string</v8:Type>
+        v8_type = self._find_element_by_local_name(type_elem, "Type")
+        if v8_type is not None and v8_type.text:
+            type_text = v8_type.text.strip()
+            # Convert xs:type to readable format
+            type_map = {
+                "xs:boolean": "Boolean",
+                "xs:string": "String",
+                "xs:decimal": "Number",
+                "xs:dateTime": "Date",
+            }
+            return type_map.get(type_text, type_text)
+
         return "String"
 
     def _is_register(self, metadata_type: MetadataType) -> bool:
@@ -618,14 +857,20 @@ class XmlParser:
         return resources
 
     def _parse_register_records(self, root: etree._Element) -> list[str]:
-        """Parse document register records."""
+        """Parse document register records.
+
+        Supports two formats:
+        1. Legacy: <RegisterRecords><item>RegisterName</item></RegisterRecords>
+        2. Configurator export: <RegisterRecords><xr:Item>RegisterName</xr:Item></RegisterRecords>
+        """
         records: list[str] = []
 
         # Find RegisterRecords container
         rr_container = self._find_element_by_local_name(root, "RegisterRecords")
         if rr_container is not None:
             for child in rr_container:
-                local_name = etree.QName(child).localname
+                local_name = etree.QName(child).localname.lower()
+                # Support both "item" (legacy) and "Item" (configurator export)
                 if local_name == "item" and child.text:
                     records.append(child.text.strip())
 
