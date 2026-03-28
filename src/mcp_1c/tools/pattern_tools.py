@@ -14,7 +14,7 @@ from mcp_1c.tools.base import BaseTool
 class PatternListTool(BaseTool):
     """List available code patterns/templates."""
 
-    name: ClassVar[str] = "pattern.list"
+    name: ClassVar[str] = "pattern-list"
     description: ClassVar[str] = """
 List available code patterns/templates.
 
@@ -86,7 +86,7 @@ Returns list of templates with id, name, description, and tags.
 class PatternGetTool(BaseTool):
     """Get detailed information about a pattern/template."""
 
-    name: ClassVar[str] = "pattern.get"
+    name: ClassVar[str] = "pattern-get"
     description: ClassVar[str] = """
 Get detailed information about a pattern/template.
 
@@ -166,7 +166,7 @@ Returns full template definition including:
 class PatternApplyTool(BaseTool):
     """Apply a pattern/template with values."""
 
-    name: ClassVar[str] = "pattern.apply"
+    name: ClassVar[str] = "pattern-apply"
     description: ClassVar[str] = """
 Apply a pattern/template with provided values.
 
@@ -225,7 +225,7 @@ Returns generated code or error with missing/invalid placeholders.
 class PatternSuggestTool(BaseTool):
     """Suggest patterns based on context or task description."""
 
-    name: ClassVar[str] = "pattern.suggest"
+    name: ClassVar[str] = "pattern-suggest"
     description: ClassVar[str] = """
 Suggest patterns based on context or task description.
 
@@ -299,7 +299,7 @@ Returns list of suggestions sorted by relevance.
 class PatternSearchTool(BaseTool):
     """Search patterns by query, category, or tags."""
 
-    name: ClassVar[str] = "pattern.search"
+    name: ClassVar[str] = "pattern-search"
     description: ClassVar[str] = """
 Search patterns by query, category, or tags.
 

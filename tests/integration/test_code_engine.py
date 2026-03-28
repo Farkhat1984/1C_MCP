@@ -61,7 +61,15 @@ class TestCodeEngineIntegration:
 
         assert module is not None
         assert len(module.content) > 0
-        assert len(module.procedures) > 0
+        assert len(module.procedures) >= 3
+
+        proc_names = [p.name for p in module.procedures]
+        assert "ПередЗаписью" in proc_names
+        assert "ОбработкаВыбора" in proc_names
+        assert "ПолучитьЦену" in proc_names
+
+        assert module.owner_type == MetadataType.CATALOG.value
+        assert module.owner_name == "Товары"
 
     @pytest.mark.asyncio
     async def test_get_common_module(
@@ -73,11 +81,19 @@ class TestCodeEngineIntegration:
         module = await code_engine.get_common_module_code("ОбщегоНазначения")
 
         assert module is not None
-        assert len(module.procedures) > 0
+        assert len(module.procedures) >= 3
 
         # Check exported functions exist
         exported = module.get_exported_procedures()
-        assert len(exported) >= 1
+        assert len(exported) >= 2
+        exported_names = [p.name for p in exported]
+        assert "ТекущийПользователь" in exported_names
+        assert "ПравоДоступа" in exported_names
+
+        # Non-exported procedure should exist but not in exported list
+        all_names = [p.name for p in module.procedures]
+        assert "ЗаписатьВЖурнал" in all_names
+        assert "ЗаписатьВЖурнал" not in exported_names
 
     @pytest.mark.asyncio
     async def test_get_procedure(
@@ -126,9 +142,11 @@ class TestCodeEngineIntegration:
         definitions = await code_engine.find_definition("ТекущийПользователь")
 
         assert len(definitions) >= 1
-        # Should find in ОбщегоНазначения module
-        paths = [str(d.location.file_path) for d in definitions]
-        assert any("ОбщегоНазначения" in p for p in paths)
+        defn = definitions[0]
+        assert defn.reference_type == "definition"
+        assert "ОбщегоНазначения" in str(defn.location.file_path)
+        assert defn.location.line > 0
+        assert defn.context != ""
 
     @pytest.mark.asyncio
     async def test_find_usages(
@@ -155,12 +173,25 @@ class TestCodeEngineIntegration:
             ModuleType.OBJECT_MODULE,
         )
 
-        assert len(procedures) >= 1
-        # Check structure
-        proc = procedures[0]
-        assert "name" in proc
-        assert "is_function" in proc
-        assert "signature" in proc
+        assert len(procedures) >= 3
+        # Check structure of each procedure dict
+        for proc in procedures:
+            assert "name" in proc
+            assert "is_function" in proc
+            assert "is_export" in proc
+            assert "signature" in proc
+            assert "line" in proc
+            assert "parameters" in proc
+
+        proc_names = [p["name"] for p in procedures]
+        assert "ПередЗаписью" in proc_names
+        assert "ПолучитьЦену" in proc_names
+
+        # Verify ПолучитьЦену is a function and exported
+        get_price = next(p for p in procedures if p["name"] == "ПолучитьЦену")
+        assert get_price["is_function"] is True
+        assert get_price["is_export"] is True
+        assert get_price["directive"] is not None
 
     @pytest.mark.asyncio
     async def test_module_regions(
@@ -176,9 +207,15 @@ class TestCodeEngineIntegration:
         )
 
         assert module is not None
-        assert len(module.regions) >= 1
+        assert len(module.regions) >= 2
         region_names = [r.name for r in module.regions]
         assert "ОбработчикиСобытий" in region_names
+        assert "СлужебныеПроцедуры" in region_names
+
+        # Verify region line ranges are valid
+        for region in module.regions:
+            assert region.start_line > 0
+            assert region.end_line >= region.start_line
 
     @pytest.mark.asyncio
     async def test_procedure_in_region(

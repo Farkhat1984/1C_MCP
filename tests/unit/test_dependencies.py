@@ -143,12 +143,12 @@ class TestDependencyGraphBuilder:
         # Build graph
         graph = await builder.build_from_module(module)
 
-        # Check nodes
-        assert len(graph.nodes) > 0
+        # Check nodes: should have at least 3 procedures
+        assert len(graph.nodes) >= 3
 
         # Check edges (procedure calls)
         call_edges = [e for e in graph.edges if e.edge_type == "calls"]
-        assert len(call_edges) > 0
+        assert len(call_edges) >= 2  # ПолучитьДанные->ОбработатьДанные and ОбработатьДанные->ПреобразоватьДанные
 
     @pytest.mark.asyncio
     async def test_build_detects_procedure_calls(
@@ -204,8 +204,10 @@ class TestDependencyGraphBuilder:
         assert "total_edges" in stats
         assert "call_edges" in stats
 
-        assert stats["total_nodes"] > 0
-        assert stats["procedures"] > 0
+        assert stats["total_nodes"] >= 3
+        assert stats["procedures"] >= 3
+        assert stats["total_edges"] >= 2
+        assert stats["call_edges"] >= 2
 
 
 class TestGraphPersistence:

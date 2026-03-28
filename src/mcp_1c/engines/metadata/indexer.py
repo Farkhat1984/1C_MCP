@@ -7,6 +7,7 @@ Optimized with parallel processing for large configurations.
 """
 
 import asyncio
+import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import AsyncIterator
@@ -53,11 +54,13 @@ class MetadataIndexer:
     - Semaphore-limited concurrency
     """
 
-    # Number of concurrent parsing operations
-    MAX_CONCURRENT_PARSE = 10
-
-    # Number of threads for CPU-bound parsing
-    PARSE_WORKERS = 4
+    # Configurable via environment variables (FIX 14)
+    MAX_CONCURRENT_PARSE: int = int(
+        os.environ.get("MCP_MAX_CONCURRENT_PARSE", "10")
+    )
+    PARSE_WORKERS: int = int(
+        os.environ.get("MCP_PARSE_WORKERS", "4")
+    )
 
     def __init__(
         self,
@@ -76,6 +79,15 @@ class MetadataIndexer:
         self.logger = get_logger(__name__)
         self._semaphore = asyncio.Semaphore(self.MAX_CONCURRENT_PARSE)
         self._executor = ThreadPoolExecutor(max_workers=self.PARSE_WORKERS)
+
+    def shutdown(self) -> None:
+        """Shut down the thread pool executor and release resources."""
+        self._executor.shutdown(wait=False)
+        self.logger.debug("ThreadPoolExecutor shut down")
+
+    def __del__(self) -> None:
+        """Ensure executor is cleaned up on garbage collection."""
+        self._executor.shutdown(wait=False)
 
     async def index_configuration(
         self,

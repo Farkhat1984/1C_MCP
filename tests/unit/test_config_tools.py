@@ -36,27 +36,32 @@ class TestConfigOptionsTool:
     @pytest.mark.asyncio
     async def test_list_options(self, initialized_engine):
         """Test listing all functional options."""
-        tool = ConfigOptionsTool()
+        tool = ConfigOptionsTool(initialized_engine)
         result = await tool.execute({})
 
         assert "count" in result
         assert "options" in result
         assert result["type"] == "FunctionalOption"
+        assert result["count"] >= 1
+        assert isinstance(result["options"], list)
+        assert len(result["options"]) == result["count"]
 
     @pytest.mark.asyncio
     async def test_get_specific_option(self, initialized_engine):
         """Test getting specific functional option."""
-        tool = ConfigOptionsTool()
+        tool = ConfigOptionsTool(initialized_engine)
         result = await tool.execute({"name": "ИспользоватьВалюты"})
 
         assert "error" not in result
         assert result["name"] == "ИспользоватьВалюты"
         assert result["full_name"] == "FunctionalOption.ИспользоватьВалюты"
+        assert result["synonym"] == "Использовать валюты"
+        assert result["comment"] == "Включает многовалютный учет"
 
     @pytest.mark.asyncio
     async def test_get_option_not_found(self, initialized_engine):
         """Test getting non-existent option."""
-        tool = ConfigOptionsTool()
+        tool = ConfigOptionsTool(initialized_engine)
         result = await tool.execute({"name": "НесуществующаяОпция"})
 
         assert "error" in result
@@ -64,7 +69,7 @@ class TestConfigOptionsTool:
     @pytest.mark.asyncio
     async def test_get_option_with_usage(self, initialized_engine):
         """Test getting option with usage info."""
-        tool = ConfigOptionsTool()
+        tool = ConfigOptionsTool(initialized_engine)
         result = await tool.execute({
             "name": "ИспользоватьВалюты",
             "include_usage": True,
@@ -80,7 +85,7 @@ class TestConfigConstantsTool:
     @pytest.mark.asyncio
     async def test_list_constants(self, initialized_engine):
         """Test listing all constants."""
-        tool = ConfigConstantsTool()
+        tool = ConfigConstantsTool(initialized_engine)
         result = await tool.execute({})
 
         assert "count" in result
@@ -90,17 +95,19 @@ class TestConfigConstantsTool:
     @pytest.mark.asyncio
     async def test_get_specific_constant(self, initialized_engine):
         """Test getting specific constant."""
-        tool = ConfigConstantsTool()
+        tool = ConfigConstantsTool(initialized_engine)
         result = await tool.execute({"name": "ОсновнаяВалюта"})
 
         assert "error" not in result
         assert result["name"] == "ОсновнаяВалюта"
         assert result["full_name"] == "Constant.ОсновнаяВалюта"
+        assert result["synonym"] == "Основная валюта"
+        assert result["comment"] == "Основная валюта учета"
 
     @pytest.mark.asyncio
     async def test_get_constant_not_found(self, initialized_engine):
         """Test getting non-existent constant."""
-        tool = ConfigConstantsTool()
+        tool = ConfigConstantsTool(initialized_engine)
         result = await tool.execute({"name": "НесуществующаяКонстанта"})
 
         assert "error" in result
@@ -112,7 +119,7 @@ class TestConfigScheduledJobsTool:
     @pytest.mark.asyncio
     async def test_list_scheduled_jobs(self, initialized_engine):
         """Test listing all scheduled jobs."""
-        tool = ConfigScheduledJobsTool()
+        tool = ConfigScheduledJobsTool(initialized_engine)
         result = await tool.execute({})
 
         assert "count" in result
@@ -122,17 +129,19 @@ class TestConfigScheduledJobsTool:
     @pytest.mark.asyncio
     async def test_get_specific_job(self, initialized_engine):
         """Test getting specific scheduled job."""
-        tool = ConfigScheduledJobsTool()
+        tool = ConfigScheduledJobsTool(initialized_engine)
         result = await tool.execute({"name": "ОбновлениеКурсовВалют"})
 
         assert "error" not in result
         assert result["name"] == "ОбновлениеКурсовВалют"
         assert result["full_name"] == "ScheduledJob.ОбновлениеКурсовВалют"
+        assert result["synonym"] == "Обновление курсов валют"
+        assert result["comment"] == "Ежедневное обновление курсов валют"
 
     @pytest.mark.asyncio
     async def test_get_job_not_found(self, initialized_engine):
         """Test getting non-existent job."""
-        tool = ConfigScheduledJobsTool()
+        tool = ConfigScheduledJobsTool(initialized_engine)
         result = await tool.execute({"name": "НесуществующееЗадание"})
 
         assert "error" in result
@@ -144,7 +153,7 @@ class TestConfigEventSubscriptionsTool:
     @pytest.mark.asyncio
     async def test_list_subscriptions(self, initialized_engine):
         """Test listing all event subscriptions."""
-        tool = ConfigEventSubscriptionsTool()
+        tool = ConfigEventSubscriptionsTool(initialized_engine)
         result = await tool.execute({})
 
         assert "count" in result
@@ -154,17 +163,19 @@ class TestConfigEventSubscriptionsTool:
     @pytest.mark.asyncio
     async def test_get_specific_subscription(self, initialized_engine):
         """Test getting specific event subscription."""
-        tool = ConfigEventSubscriptionsTool()
+        tool = ConfigEventSubscriptionsTool(initialized_engine)
         result = await tool.execute({"name": "ПриЗаписиТоваров"})
 
         assert "error" not in result
         assert result["name"] == "ПриЗаписиТоваров"
         assert result["full_name"] == "EventSubscription.ПриЗаписиТоваров"
+        assert result["synonym"] == "При записи товаров"
+        assert result["comment"] == "Обработка записи справочника товаров"
 
     @pytest.mark.asyncio
     async def test_get_subscription_not_found(self, initialized_engine):
         """Test getting non-existent subscription."""
-        tool = ConfigEventSubscriptionsTool()
+        tool = ConfigEventSubscriptionsTool(initialized_engine)
         result = await tool.execute({"name": "НесуществующаяПодписка"})
 
         assert "error" in result
@@ -172,7 +183,7 @@ class TestConfigEventSubscriptionsTool:
     @pytest.mark.asyncio
     async def test_filter_subscriptions(self, initialized_engine):
         """Test filtering subscriptions by event name."""
-        tool = ConfigEventSubscriptionsTool()
+        tool = ConfigEventSubscriptionsTool(initialized_engine)
         result = await tool.execute({"filter_event": "Запис"})
 
         assert "count" in result
@@ -185,7 +196,7 @@ class TestConfigExchangesTool:
     @pytest.mark.asyncio
     async def test_list_exchanges(self, initialized_engine):
         """Test listing all exchange plans."""
-        tool = ConfigExchangesTool()
+        tool = ConfigExchangesTool(initialized_engine)
         result = await tool.execute({})
 
         assert "count" in result
@@ -195,18 +206,23 @@ class TestConfigExchangesTool:
     @pytest.mark.asyncio
     async def test_get_specific_exchange(self, initialized_engine):
         """Test getting specific exchange plan."""
-        tool = ConfigExchangesTool()
+        tool = ConfigExchangesTool(initialized_engine)
         result = await tool.execute({"name": "ОбменСФилиалами"})
 
         assert "error" not in result
         assert result["name"] == "ОбменСФилиалами"
         assert result["full_name"] == "ExchangePlan.ОбменСФилиалами"
+        assert result["synonym"] == "Обмен с филиалами"
+        assert result["comment"] == "План обмена с филиалами"
         assert "attributes" in result
+        assert len(result["attributes"]) >= 1
+        attr_names = [a["name"] for a in result["attributes"]]
+        assert "Организация" in attr_names
 
     @pytest.mark.asyncio
     async def test_get_exchange_not_found(self, initialized_engine):
         """Test getting non-existent exchange plan."""
-        tool = ConfigExchangesTool()
+        tool = ConfigExchangesTool(initialized_engine)
         result = await tool.execute({"name": "НесуществующийПлан"})
 
         assert "error" in result
@@ -218,7 +234,7 @@ class TestConfigHttpServicesTool:
     @pytest.mark.asyncio
     async def test_list_http_services(self, initialized_engine):
         """Test listing all HTTP services."""
-        tool = ConfigHttpServicesTool()
+        tool = ConfigHttpServicesTool(initialized_engine)
         result = await tool.execute({})
 
         assert "count" in result
@@ -228,17 +244,19 @@ class TestConfigHttpServicesTool:
     @pytest.mark.asyncio
     async def test_get_specific_service(self, initialized_engine):
         """Test getting specific HTTP service."""
-        tool = ConfigHttpServicesTool()
+        tool = ConfigHttpServicesTool(initialized_engine)
         result = await tool.execute({"name": "API"})
 
         assert "error" not in result
         assert result["name"] == "API"
         assert result["full_name"] == "HTTPService.API"
+        assert result["synonym"] == "REST API"
+        assert result["comment"] == "REST API сервис"
 
     @pytest.mark.asyncio
     async def test_get_service_not_found(self, initialized_engine):
         """Test getting non-existent HTTP service."""
-        tool = ConfigHttpServicesTool()
+        tool = ConfigHttpServicesTool(initialized_engine)
         result = await tool.execute({"name": "НесуществующийСервис"})
 
         assert "error" in result

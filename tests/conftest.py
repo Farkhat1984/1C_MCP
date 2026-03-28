@@ -129,6 +129,44 @@ def mock_config_path(temp_dir: Path) -> Path:
     es_xml = es_item_dir / "ПриЗаписиТоваров.xml"
     es_xml.write_text(MOCK_EVENT_SUBSCRIPTION_XML, encoding="utf-8")
 
+    # Create second catalog: Контрагенты with BSL module
+    kontragenty_dir = catalogs_dir / "Контрагенты"
+    kontragenty_dir.mkdir()
+    kontragenty_xml = kontragenty_dir / "Контрагенты.xml"
+    kontragenty_xml.write_text(MOCK_CATALOG_KONTRAGENTY_XML, encoding="utf-8")
+
+    kontragenty_ext = kontragenty_dir / "Ext"
+    kontragenty_ext.mkdir()
+    kontragenty_bsl = kontragenty_ext / "ObjectModule.bsl"
+    kontragenty_bsl.write_text(MOCK_KONTRAGENTY_BSL, encoding="utf-8")
+
+    # Create DefinedTypes directory
+    dt_dir = config_root / "DefinedTypes"
+    dt_dir.mkdir()
+
+    dt_item_dir = dt_dir / "ВладелецТовара"
+    dt_item_dir.mkdir()
+    dt_xml = dt_item_dir / "ВладелецТовара.xml"
+    dt_xml.write_text(MOCK_DEFINED_TYPE_XML, encoding="utf-8")
+
+    # Create CommonAttributes directory
+    ca_dir = config_root / "CommonAttributes"
+    ca_dir.mkdir()
+
+    ca_item_dir = ca_dir / "Организация"
+    ca_item_dir.mkdir()
+    ca_xml = ca_item_dir / "Организация.xml"
+    ca_xml.write_text(MOCK_COMMON_ATTRIBUTE_XML, encoding="utf-8")
+
+    # Create Roles directory
+    roles_dir = config_root / "Roles"
+    roles_dir.mkdir()
+
+    role_item_dir = roles_dir / "Администратор"
+    role_item_dir.mkdir()
+    role_xml = role_item_dir / "Администратор.xml"
+    role_xml.write_text(MOCK_ROLE_XML, encoding="utf-8")
+
     # Create ExchangePlans directory
     ep_dir = config_root / "ExchangePlans"
     ep_dir.mkdir()
@@ -193,6 +231,15 @@ MOCK_CONFIGURATION_XML = '''<?xml version="1.0" encoding="UTF-8"?>
         <HTTPServices>
             <item>API</item>
         </HTTPServices>
+        <DefinedTypes>
+            <item>ВладелецТовара</item>
+        </DefinedTypes>
+        <CommonAttributes>
+            <item>Организация</item>
+        </CommonAttributes>
+        <Roles>
+            <item>Администратор</item>
+        </Roles>
     </Configuration>
 </MetaDataObject>
 '''
@@ -462,7 +509,7 @@ MOCK_SCHEDULED_JOB_XML = '''<?xml version="1.0" encoding="UTF-8"?>
         <Comment>
             <item lang="ru">Ежедневное обновление курсов валют</item>
         </Comment>
-        <MethodName>ОбщегоНазначения.ОбновитьКурсыВалют</MethodName>
+        <MethodName>CommonModule.ОбщегоНазначения.ОбновлениеКурсовВалют</MethodName>
     </ScheduledJob>
 </MetaDataObject>
 '''
@@ -477,6 +524,10 @@ MOCK_EVENT_SUBSCRIPTION_XML = '''<?xml version="1.0" encoding="UTF-8"?>
         <Comment>
             <item lang="ru">Обработка записи справочника товаров</item>
         </Comment>
+        <Source>
+            <Type>DocumentObject.ПриходТовара</Type>
+        </Source>
+        <Handler>CommonModule.ОбщегоНазначения.ОбработкаПриЗаписиТоваров</Handler>
     </EventSubscription>
 </MetaDataObject>
 '''
@@ -516,5 +567,145 @@ MOCK_HTTP_SERVICE_XML = '''<?xml version="1.0" encoding="UTF-8"?>
         </Comment>
         <RootURL>api</RootURL>
     </HTTPService>
+</MetaDataObject>
+'''
+
+MOCK_CATALOG_KONTRAGENTY_XML = '''<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses">
+    <Catalog uuid="f1a2b3c4-d5e6-7890-abcd-ef0123456789">
+        <Name>Контрагенты</Name>
+        <Synonym>
+            <item lang="ru">Контрагенты</item>
+        </Synonym>
+        <Comment>
+            <item lang="ru">Справочник контрагентов</item>
+        </Comment>
+        <Attributes>
+            <Attribute>
+                <Name>ИНН</Name>
+                <Synonym>
+                    <item lang="ru">ИНН</item>
+                </Synonym>
+                <Type>String</Type>
+            </Attribute>
+            <Attribute>
+                <Name>КПП</Name>
+                <Synonym>
+                    <item lang="ru">КПП</item>
+                </Synonym>
+                <Type>String</Type>
+            </Attribute>
+        </Attributes>
+    </Catalog>
+</MetaDataObject>
+'''
+
+MOCK_KONTRAGENTY_BSL = '''
+#Область ОбработчикиСобытий
+
+Процедура ПриЗаписи(Отказ)
+    // Обработчик события при записи
+    Если Не ЗначениеЗаполнено(Наименование) Тогда
+        Отказ = Истина;
+    КонецЕсли;
+КонецПроцедуры
+
+#КонецОбласти
+
+#Область СлужебныеПроцедуры
+
+// Вызывает процедуру из модуля Товары
+Процедура ПолучитьИнформацию()
+    Результат = Справочники.Товары.ПолучитьЦену();
+КонецПроцедуры
+
+// Эта процедура нигде не используется (мёртвый код)
+Процедура НеиспользуемаяПроцедура()
+    Сообщить("Это мёртвый код");
+КонецПроцедуры
+
+#КонецОбласти
+'''
+
+MOCK_DEFINED_TYPE_XML = '''<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses">
+    <DefinedType uuid="a2b3c4d5-e6f7-8901-bcde-f01234567890">
+        <Name>ВладелецТовара</Name>
+        <Synonym>
+            <item lang="ru">Владелец товара</item>
+        </Synonym>
+        <Comment>
+            <item lang="ru">Составной тип - владелец товара</item>
+        </Comment>
+        <Type>СправочникСсылка.Товары, СправочникСсылка.Контрагенты</Type>
+    </DefinedType>
+</MetaDataObject>
+'''
+
+MOCK_COMMON_ATTRIBUTE_XML = '''<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses">
+    <CommonAttribute uuid="b3c4d5e6-f7a8-9012-cdef-012345678901">
+        <Name>Организация</Name>
+        <Synonym>
+            <item lang="ru">Организация</item>
+        </Synonym>
+        <Comment>
+            <item lang="ru">Общий реквизит Организация</item>
+        </Comment>
+        <AutoUse>Use</AutoUse>
+        <Content>
+            <item>Catalog.Товары</item>
+            <item>Document.ПриходТовара</item>
+        </Content>
+        <Type>CatalogRef.Организации</Type>
+    </CommonAttribute>
+</MetaDataObject>
+'''
+
+MOCK_ROLE_XML = '''<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses">
+    <Role uuid="c4d5e6f7-a8b9-0123-def0-123456789012">
+        <Name>Администратор</Name>
+        <Properties>
+            <Synonym>
+                <v>Администратор</v>
+            </Synonym>
+        </Properties>
+        <Rights>
+            <Object path="Catalog.Товары">
+                <Right>
+                    <Name>Read</Name>
+                    <Value>true</Value>
+                </Right>
+                <Right>
+                    <Name>Update</Name>
+                    <Value>true</Value>
+                </Right>
+                <Right>
+                    <Name>Insert</Name>
+                    <Value>true</Value>
+                </Right>
+                <Right>
+                    <Name>Delete</Name>
+                    <Value>true</Value>
+                </Right>
+                <Right>
+                    <Name>RLS</Name>
+                    <Value>true</Value>
+                    <Template>ПоОрганизации</Template>
+                </Right>
+            </Object>
+            <Object path="Document.ПриходТовара">
+                <Right>
+                    <Name>Read</Name>
+                    <Value>true</Value>
+                </Right>
+                <Right>
+                    <Name>Posting</Name>
+                    <Value>true</Value>
+                </Right>
+            </Object>
+        </Rights>
+    </Role>
 </MetaDataObject>
 '''

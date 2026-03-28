@@ -304,10 +304,15 @@ class TestTemplateEngine:
         """Test listing templates."""
         templates = self.engine.list_templates()
 
-        assert len(templates) > 0
+        assert len(templates) > 10
         # Check we have different categories
         categories = {t.category for t in templates}
-        assert len(categories) > 1
+        assert len(categories) >= 4  # query, handler, movement, api, print_form
+        # Each template should have required fields
+        for t in templates:
+            assert t.id != ""
+            assert t.name != ""
+            assert t.category is not None
 
     def test_list_templates_by_category(self) -> None:
         """Test listing templates by category."""
@@ -322,7 +327,12 @@ class TestTemplateEngine:
 
         assert template is not None
         assert template.id == "query.select_simple"
-        assert len(template.placeholders) > 0
+        assert template.category == TemplateCategory.QUERY
+        assert len(template.placeholders) >= 2
+        assert template.template_code != ""
+        # Should have at least TableName placeholder
+        placeholder_names = [p.name for p in template.placeholders]
+        assert "TableName" in placeholder_names
 
     def test_get_nonexistent_template(self) -> None:
         """Test getting non-existent template."""
@@ -436,9 +446,12 @@ class TestTemplateEngine:
         """Test getting template statistics."""
         stats = self.engine.get_template_stats()
 
-        assert stats["total_templates"] > 0
-        assert len(stats["categories"]) > 0
-        assert stats["unique_tags"] > 0
+        assert stats["total_templates"] >= 20
+        assert len(stats["categories"]) >= 4
+        assert stats["unique_tags"] >= 1
+        # Each category should have a count
+        for category_info in stats["categories"]:
+            assert "name" in category_info or isinstance(category_info, str)
 
 
 class TestTemplateCategories:

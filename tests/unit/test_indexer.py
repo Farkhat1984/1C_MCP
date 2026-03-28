@@ -94,8 +94,10 @@ class TestMetadataIndexer:
         """Test that indexing counts all objects."""
         progress = await indexer.index_configuration(mock_config_path)
 
-        # We have: 2 catalogs, 2 documents, 1 common module, 1 subsystem, 1 register
-        assert progress.total >= 7
+        # Config has: 2 catalogs, 2 documents, 1 common module, 1 subsystem,
+        # 1 register, 1 constant, 1 functional option, 1 scheduled job,
+        # 1 event subscription, 1 exchange plan, 1 HTTP service = 12+
+        assert progress.total >= 12
 
     @pytest.mark.asyncio
     async def test_index_configuration_saves_to_cache(
@@ -248,12 +250,16 @@ class TestIndexerIntegration:
         progress = await indexer.index_configuration(mock_config_path)
 
         # Verify all objects were indexed
-        assert progress.total > 0
+        assert progress.total >= 12
         assert progress.processed == progress.total
         assert len(progress.errors) == 0
+        assert progress.percentage == 100.0
 
-        # Verify cache was populated
-        assert mock_cache.save_object.call_count >= 5  # At least catalogs, docs, modules
+        # Verify cache was populated with all real objects from mock config
+        # At minimum: 2 catalogs + 2 documents + 1 common module + 1 register +
+        # 1 constant + 1 functional option + 1 scheduled job + 1 event sub +
+        # 1 exchange plan + 1 HTTP service = 11 objects
+        assert mock_cache.save_object.call_count >= 11
         assert mock_cache.save_subsystem.call_count >= 1
 
     @pytest.mark.asyncio

@@ -1,0 +1,18 @@
+[Unit]
+Description=MCP-1C HTTP/SSE Server
+After=network.target
+
+[Service]
+Type=simple
+User=faragj
+WorkingDirectory=/home/faragj/faragj/1C_MCP
+ExecStart=/home/faragj/faragj/1C_MCP/.venv/bin/python -m mcp_1c.web --host 0.0.0.0 --port 8081
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+Environment=MCP_CONFIG_PATH=/home/faragj/qga_config/qga
+Environment=MCP_EMBEDDINGS_DB=/home/faragj/faragj/1C_MCP/.mcp_1c_embeddings.db
+Environment=DEEPINFRA_API_KEY=5O48pzde3nhamIjWG2C0X4uO4UQrd9eM
+
+[Install]
+WantedBy=multi-user.target

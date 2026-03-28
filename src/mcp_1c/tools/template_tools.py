@@ -14,7 +14,7 @@ from mcp_1c.tools.base import BaseTool
 class TemplateGetTool(BaseTool):
     """Get structure and information about a template (MXL)."""
 
-    name: ClassVar[str] = "template.get"
+    name: ClassVar[str] = "template-get"
     description: ClassVar[str] = """
 Get structure and information about a 1C template (MXL/SpreadsheetDocument).
 
@@ -56,7 +56,7 @@ Args:
 class TemplateParametersTool(BaseTool):
     """Get parameters from a template (MXL)."""
 
-    name: ClassVar[str] = "template.parameters"
+    name: ClassVar[str] = "template-parameters"
     description: ClassVar[str] = """
 Get all parameters from a 1C template (MXL/SpreadsheetDocument).
 
@@ -137,7 +137,7 @@ Args:
 class TemplateAreasTool(BaseTool):
     """Get named areas from a template (MXL)."""
 
-    name: ClassVar[str] = "template.areas"
+    name: ClassVar[str] = "template-areas"
     description: ClassVar[str] = """
 Get named areas from a 1C template (MXL/SpreadsheetDocument).
 
@@ -198,7 +198,7 @@ Args:
 class TemplateGenerateFillCodeTool(BaseTool):
     """Generate BSL code for filling a template."""
 
-    name: ClassVar[str] = "template.generate_fill_code"
+    name: ClassVar[str] = "template-generate_fill_code"
     description: ClassVar[str] = """
 Generate BSL code for filling a 1C template (MXL/SpreadsheetDocument).
 
@@ -324,7 +324,7 @@ Args:
 class TemplateFindTool(BaseTool):
     """Find all templates in a 1C configuration."""
 
-    name: ClassVar[str] = "template.find"
+    name: ClassVar[str] = "template-find"
     description: ClassVar[str] = """
 Find all MXL templates in a 1C configuration.
 

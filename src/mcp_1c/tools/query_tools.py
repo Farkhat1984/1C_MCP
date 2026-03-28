@@ -13,7 +13,7 @@ from mcp_1c.tools.base import BaseTool
 class QueryParseTool(BaseTool):
     """Parse 1C query into structured representation."""
 
-    name: ClassVar[str] = "query.parse"
+    name: ClassVar[str] = "query-parse"
     description: ClassVar[str] = """
 Parse a 1C query into structured representation.
 
@@ -91,7 +91,7 @@ Supports both Russian and English query syntax.
 class QueryValidateTool(BaseTool):
     """Validate 1C query."""
 
-    name: ClassVar[str] = "query.validate"
+    name: ClassVar[str] = "query-validate"
     description: ClassVar[str] = """
 Validate a 1C query.
 
@@ -143,7 +143,7 @@ Returns validation result with errors, warnings, and suggestions.
 class QueryOptimizeTool(BaseTool):
     """Get optimization suggestions for 1C query."""
 
-    name: ClassVar[str] = "query.optimize"
+    name: ClassVar[str] = "query-optimize"
     description: ClassVar[str] = """
 Get optimization suggestions for a 1C query.
 
@@ -196,7 +196,7 @@ Returns list of suggestions with impact level.
 class QueryExplainTool(BaseTool):
     """Explain 1C query in human-readable format."""
 
-    name: ClassVar[str] = "query.explain"
+    name: ClassVar[str] = "query-explain"
     description: ClassVar[str] = """
 Explain a 1C query in human-readable format (Russian).
 
@@ -226,19 +226,19 @@ Useful for understanding complex queries.
         super().__init__()
         self._engine = get_template_engine()
 
-    async def execute(self, arguments: dict[str, Any]) -> str:
+    async def execute(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Explain query."""
         query_text = arguments["query_text"]
 
         explanation = self._engine.explain_query(query_text)
 
-        return explanation
+        return {"explanation": explanation}
 
 
 class QueryTablesTool(BaseTool):
     """Get list of tables used in 1C query."""
 
-    name: ClassVar[str] = "query.tables"
+    name: ClassVar[str] = "query-tables"
     description: ClassVar[str] = """
 Get list of tables used in a 1C query.
 

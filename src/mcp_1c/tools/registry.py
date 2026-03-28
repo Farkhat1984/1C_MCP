@@ -25,32 +25,32 @@ class ToolRegistry:
     def __init__(self) -> None:
         """Initialize registry and register all tools."""
         self._tools: dict[str, BaseTool] = {}
-        self._platform_engine: Any = None
         self._register_all_tools()
 
     async def initialize(self) -> None:
-        """Initialize async components (platform engine, etc.)."""
-        if self._platform_engine:
-            await self._platform_engine.initialize()
-            logger.info("Platform engine initialized")
+        """Initialize async components if needed."""
+        pass
 
     def _register_all_tools(self) -> None:
         """Register all available tools."""
         # Import tools here to avoid circular imports
-        from mcp_1c.tools.metadata_tools import (
-            MetadataInitTool,
-            MetadataListTool,
-            MetadataGetTool,
-            MetadataSearchTool,
-            MetadataTreeTool,
-            MetadataAttributesTool,
-            MetadataFormsTool,
-            MetadataTemplatesTool,
-            MetadataRegistersTool,
-            MetadataReferencesTool,
+        from mcp_1c.engines.code import CodeEngine
+        from mcp_1c.engines.embeddings import EmbeddingEngine
+        from mcp_1c.engines.knowledge_graph import KnowledgeGraphEngine
+        from mcp_1c.engines.smart import SmartGenerator
+        from mcp_1c.engines.metadata import MetadataEngine
+        from mcp_1c.tools.smart_tools import (
+            SmartMovementTool,
+            SmartPrintTool,
+            SmartQueryTool,
+        )
+        from mcp_1c.tools.analysis_tools import (
+            CodeDeadCodeTool,
+            ConfigCompareTool,
+            ConfigRoleRightsTool,
+            ConfigRolesTool,
         )
         from mcp_1c.tools.code_tools import (
-            CodeAnalyzeTool,
             CodeCallGraphTool,
             CodeComplexityTool,
             CodeDependenciesTool,
@@ -58,133 +58,112 @@ class ToolRegistry:
             CodeLintTool,
             CodeModuleTool,
             CodeProcedureTool,
-            CodeResolveTool,
-            CodeUsagesTool,
             CodeValidateTool,
         )
-        from mcp_1c.tools.generate_tools import (
-            GenerateApiTool,
-            GenerateFormHandlerTool,
-            GenerateHandlerTool,
-            GenerateMovementTool,
-            GeneratePrintTool,
-            GenerateQueryTool,
-            GenerateScheduledJobTool,
-            GenerateSubscriptionTool,
+        from mcp_1c.tools.config_tools import ConfigObjectsTool
+        from mcp_1c.tools.embedding_tools import (
+            EmbeddingIndexTool,
+            EmbeddingSearchTool,
+            EmbeddingSimilarTool,
+            EmbeddingStatsTool,
         )
-        from mcp_1c.tools.query_tools import (
-            QueryExplainTool,
-            QueryOptimizeTool,
-            QueryParseTool,
-            QueryTablesTool,
-            QueryValidateTool,
+        from mcp_1c.tools.graph_tools import (
+            GraphBuildTool,
+            GraphImpactTool,
+            GraphRelatedTool,
+            GraphStatsTool,
+        )
+        from mcp_1c.tools.metadata_tools import (
+            MetadataGetTool,
+            MetadataInitTool,
+            MetadataListTool,
+            MetadataSearchTool,
         )
         from mcp_1c.tools.pattern_tools import (
             PatternApplyTool,
-            PatternGetTool,
             PatternListTool,
-            PatternSearchTool,
             PatternSuggestTool,
         )
-        from mcp_1c.tools.template_tools import (
-            TemplateGetTool,
-            TemplateParametersTool,
-            TemplateAreasTool,
-            TemplateGenerateFillCodeTool,
-            TemplateFindTool,
-        )
         from mcp_1c.tools.platform_tools import (
-            PlatformMethodTool,
-            PlatformTypeTool,
-            PlatformEventTool,
-            PlatformSearchTool,
             PlatformGlobalContextTool,
+            PlatformSearchTool,
         )
-        from mcp_1c.tools.config_tools import (
-            ConfigOptionsTool,
-            ConfigConstantsTool,
-            ConfigScheduledJobsTool,
-            ConfigEventSubscriptionsTool,
-            ConfigExchangesTool,
-            ConfigHttpServicesTool,
+        from mcp_1c.tools.query_tools import (
+            QueryOptimizeTool,
+            QueryValidateTool,
         )
-        from mcp_1c.engines.platform import PlatformEngine
+        from mcp_1c.tools.template_tools import (
+            TemplateFindTool,
+            TemplateGenerateFillCodeTool,
+            TemplateGetTool,
+        )
 
-        # Metadata tools
-        self.register(MetadataInitTool())
-        self.register(MetadataListTool())
-        self.register(MetadataGetTool())
-        self.register(MetadataSearchTool())
-        self.register(MetadataTreeTool())
-        self.register(MetadataAttributesTool())
-        self.register(MetadataFormsTool())
-        self.register(MetadataTemplatesTool())
-        self.register(MetadataRegistersTool())
-        self.register(MetadataReferencesTool())
+        # Create shared engine instances once
+        metadata_engine = MetadataEngine.get_instance()
+        code_engine = CodeEngine.get_instance()
+        kg_engine = KnowledgeGraphEngine.get_instance()
+        embedding_engine = EmbeddingEngine.get_instance()
 
-        # Code tools (Phase 1)
-        self.register(CodeModuleTool())
-        self.register(CodeProcedureTool())
-        self.register(CodeResolveTool())
-        self.register(CodeUsagesTool())
+        # Metadata tools (4)
+        self.register(MetadataInitTool(metadata_engine))
+        self.register(MetadataListTool(metadata_engine))
+        self.register(MetadataGetTool(metadata_engine))
+        self.register(MetadataSearchTool(metadata_engine))
 
-        # Code tools (Phase 2 - Extended analysis)
-        self.register(CodeDependenciesTool())
-        self.register(CodeAnalyzeTool())
-        self.register(CodeCallGraphTool())
+        # Code tools (8)
+        self.register(CodeModuleTool(code_engine))
+        self.register(CodeProcedureTool(code_engine))
+        self.register(CodeDependenciesTool(code_engine))
+        self.register(CodeCallGraphTool(code_engine))
+        self.register(CodeValidateTool(code_engine))
+        self.register(CodeLintTool(code_engine))
+        self.register(CodeFormatTool(code_engine))
+        self.register(CodeComplexityTool(code_engine))
 
-        # Code tools (Phase 2.3 - BSL LS integration)
-        self.register(CodeValidateTool())
-        self.register(CodeLintTool())
-        self.register(CodeFormatTool())
-        self.register(CodeComplexityTool())
-
-        # Generate tools (Phase 3)
-        self.register(GenerateQueryTool())
-        self.register(GenerateHandlerTool())
-        self.register(GeneratePrintTool())
-        self.register(GenerateMovementTool())
-        self.register(GenerateApiTool())
-        self.register(GenerateFormHandlerTool())
-        self.register(GenerateSubscriptionTool())
-        self.register(GenerateScheduledJobTool())
-
-        # Query tools (Phase 3)
-        self.register(QueryParseTool())
+        # Query tools (2)
         self.register(QueryValidateTool())
         self.register(QueryOptimizeTool())
-        self.register(QueryExplainTool())
-        self.register(QueryTablesTool())
 
-        # Pattern tools (Phase 3)
+        # Pattern tools (3)
         self.register(PatternListTool())
-        self.register(PatternGetTool())
         self.register(PatternApplyTool())
         self.register(PatternSuggestTool())
-        self.register(PatternSearchTool())
 
-        # Template (MXL) tools (Phase 4)
+        # Template (MXL) tools (3)
         self.register(TemplateGetTool())
-        self.register(TemplateParametersTool())
-        self.register(TemplateAreasTool())
         self.register(TemplateGenerateFillCodeTool())
         self.register(TemplateFindTool())
 
-        # Platform tools (Phase 4 - Knowledge Base)
-        self._platform_engine = PlatformEngine()
-        self.register(PlatformMethodTool(self._platform_engine))
-        self.register(PlatformTypeTool(self._platform_engine))
-        self.register(PlatformEventTool(self._platform_engine))
-        self.register(PlatformSearchTool(self._platform_engine))
-        self.register(PlatformGlobalContextTool(self._platform_engine))
+        # Platform tools (2)
+        self.register(PlatformSearchTool())
+        self.register(PlatformGlobalContextTool())
 
-        # Config tools (Phase 4 - Configuration objects)
-        self.register(ConfigOptionsTool())
-        self.register(ConfigConstantsTool())
-        self.register(ConfigScheduledJobsTool())
-        self.register(ConfigEventSubscriptionsTool())
-        self.register(ConfigExchangesTool())
-        self.register(ConfigHttpServicesTool())
+        # Config tools (4 — 1 consolidated + 3 analysis)
+        self.register(ConfigObjectsTool(metadata_engine))
+        self.register(ConfigRolesTool(metadata_engine))
+        self.register(ConfigRoleRightsTool(metadata_engine))
+        self.register(ConfigCompareTool())
+
+        # Knowledge Graph tools (4)
+        self.register(GraphBuildTool(kg_engine, metadata_engine))
+        self.register(GraphImpactTool(kg_engine))
+        self.register(GraphRelatedTool(kg_engine))
+        self.register(GraphStatsTool(kg_engine))
+
+        # Embedding tools (4)
+        self.register(EmbeddingIndexTool(embedding_engine, metadata_engine, code_engine))
+        self.register(EmbeddingSearchTool(embedding_engine))
+        self.register(EmbeddingSimilarTool(embedding_engine))
+        self.register(EmbeddingStatsTool(embedding_engine))
+
+        # Analysis tools (1)
+        self.register(CodeDeadCodeTool(code_engine, metadata_engine))
+
+        # Smart generation tools (3)
+        smart_generator = SmartGenerator.get_instance()
+        self.register(SmartQueryTool())
+        self.register(SmartPrintTool())
+        self.register(SmartMovementTool())
 
         logger.info(f"Registered {len(self._tools)} tools")
 

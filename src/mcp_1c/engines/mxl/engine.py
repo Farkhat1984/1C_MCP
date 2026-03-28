@@ -14,11 +14,35 @@ from mcp_1c.domain.mxl import (
     MxlParseResult,
     TemplateParameter,
 )
+from collections import OrderedDict
+
 from mcp_1c.engines.mxl.generator import FillCodeGenerator
 from mcp_1c.engines.mxl.parser import MxlParser
 from mcp_1c.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+_MXL_CACHE_MAX_SIZE = 100
+
+
+class _LRUDict(OrderedDict):
+    """Bounded LRU dictionary for sync cache usage."""
+
+    def __init__(self, max_size: int = _MXL_CACHE_MAX_SIZE) -> None:
+        super().__init__()
+        self._max_size = max_size
+
+    def __getitem__(self, key: str) -> MxlDocument:
+        value = super().__getitem__(key)
+        self.move_to_end(key)
+        return value
+
+    def __setitem__(self, key: str, value: MxlDocument) -> None:
+        if key in self:
+            self.move_to_end(key)
+        super().__setitem__(key, value)
+        if len(self) > self._max_size:
+            self.popitem(last=False)
 
 
 class MxlEngine:
@@ -28,7 +52,7 @@ class MxlEngine:
         """Initialize MXL engine."""
         self._parser = MxlParser()
         self._generator = FillCodeGenerator()
-        self._cache: dict[str, MxlDocument] = {}
+        self._cache: _LRUDict = _LRUDict(max_size=_MXL_CACHE_MAX_SIZE)
 
     def parse_template(
         self, file_path: str | Path, use_cache: bool = True

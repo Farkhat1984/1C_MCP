@@ -2,11 +2,11 @@
 Platform tools for accessing 1C:Enterprise platform API documentation.
 
 Tools:
-- platform.method - Get method description
-- platform.type - Get type description
-- platform.event - Get event description
-- platform.search - Search platform API
-- platform.global_context - Get global context overview
+- platform-method - Get method description
+- platform-type - Get type description
+- platform-event - Get event description
+- platform-search - Search platform API
+- platform-global_context - Get global context overview
 """
 
 import logging
@@ -18,15 +18,29 @@ from .base import BaseTool, ToolResult
 logger = logging.getLogger(__name__)
 
 
-class PlatformMethodTool(BaseTool):
+class PlatformBaseTool(BaseTool):
+    """Base class for platform tools with lazy-loaded engine."""
+
+    _engine: PlatformEngine | None = None
+
+    @classmethod
+    def get_engine(cls) -> PlatformEngine:
+        """Get or create the shared PlatformEngine instance (lazy)."""
+        if cls._engine is None:
+            cls._engine = PlatformEngine()
+        return cls._engine
+
+    @property
+    def engine(self) -> PlatformEngine:
+        """Access the lazily-loaded PlatformEngine."""
+        return self.get_engine()
+
+
+class PlatformMethodTool(PlatformBaseTool):
     """Get platform method description."""
 
-    name = "platform.method"
+    name = "platform-method"
     description = "Get description of a platform method from global context or type"
-
-    def __init__(self, engine: PlatformEngine) -> None:
-        super().__init__()
-        self.engine = engine
 
     def get_input_schema(self) -> dict[str, Any]:
         return {
@@ -100,15 +114,11 @@ class PlatformMethodTool(BaseTool):
         return ToolResult(success=True, data=result)
 
 
-class PlatformTypeTool(BaseTool):
+class PlatformTypeTool(PlatformBaseTool):
     """Get platform type description."""
 
-    name = "platform.type"
+    name = "platform-type"
     description = "Get description of a platform data type with its methods and properties"
-
-    def __init__(self, engine: PlatformEngine) -> None:
-        super().__init__()
-        self.engine = engine
 
     def get_input_schema(self) -> dict[str, Any]:
         return {
@@ -195,15 +205,11 @@ class PlatformTypeTool(BaseTool):
         return ToolResult(success=True, data=result)
 
 
-class PlatformEventTool(BaseTool):
+class PlatformEventTool(PlatformBaseTool):
     """Get platform event description."""
 
-    name = "platform.event"
+    name = "platform-event"
     description = "Get description of an object event with handler signature"
-
-    def __init__(self, engine: PlatformEngine) -> None:
-        super().__init__()
-        self.engine = engine
 
     def get_input_schema(self) -> dict[str, Any]:
         return {
@@ -275,15 +281,11 @@ class PlatformEventTool(BaseTool):
         return ToolResult(success=True, data=result)
 
 
-class PlatformSearchTool(BaseTool):
+class PlatformSearchTool(PlatformBaseTool):
     """Search platform API."""
 
-    name = "platform.search"
+    name = "platform-search"
     description = "Search for methods, types, and events in platform API"
-
-    def __init__(self, engine: PlatformEngine) -> None:
-        super().__init__()
-        self.engine = engine
 
     def get_input_schema(self) -> dict[str, Any]:
         return {
@@ -362,15 +364,11 @@ class PlatformSearchTool(BaseTool):
         )
 
 
-class PlatformGlobalContextTool(BaseTool):
+class PlatformGlobalContextTool(PlatformBaseTool):
     """Get global context overview."""
 
-    name = "platform.global_context"
+    name = "platform-global_context"
     description = "Get overview of platform global context sections and methods"
-
-    def __init__(self, engine: PlatformEngine) -> None:
-        super().__init__()
-        self.engine = engine
 
     def get_input_schema(self) -> dict[str, Any]:
         return {
@@ -435,14 +433,14 @@ class PlatformGlobalContextTool(BaseTool):
         return ToolResult(success=True, data=result)
 
 
-def register_platform_tools(registry: Any, engine: PlatformEngine) -> None:
-    """Register all platform tools."""
+def register_platform_tools(registry: Any) -> None:
+    """Register all platform tools (engine is lazily loaded on first use)."""
     tools = [
-        PlatformMethodTool(engine),
-        PlatformTypeTool(engine),
-        PlatformEventTool(engine),
-        PlatformSearchTool(engine),
-        PlatformGlobalContextTool(engine),
+        PlatformMethodTool(),
+        PlatformTypeTool(),
+        PlatformEventTool(),
+        PlatformSearchTool(),
+        PlatformGlobalContextTool(),
     ]
     for tool in tools:
         registry.register(tool)

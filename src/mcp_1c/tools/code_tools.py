@@ -12,13 +12,13 @@ from typing import Any, ClassVar
 from mcp_1c.domain.metadata import MetadataType, ModuleType
 from mcp_1c.engines.code import CodeEngine, DependencyGraphBuilder, BslLanguageServer
 from mcp_1c.engines.metadata import MetadataEngine
-from mcp_1c.tools.base import BaseTool
+from mcp_1c.tools.base import BaseTool, parse_metadata_type
 
 
 class CodeModuleTool(BaseTool):
     """Get module code for a metadata object."""
 
-    name: ClassVar[str] = "code.module"
+    name: ClassVar[str] = "code-module"
     description: ClassVar[str] = (
         "Get the full code of a module for a metadata object. "
         "Returns the BSL code with procedure list."
@@ -51,6 +51,10 @@ class CodeModuleTool(BaseTool):
         "required": ["type", "name"],
     }
 
+    def __init__(self, engine: CodeEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Get module code."""
         type_str = arguments["type"]
@@ -58,13 +62,7 @@ class CodeModuleTool(BaseTool):
         module_str = arguments.get("module", "ObjectModule")
         include_code = arguments.get("include_code", True)
 
-        # Parse metadata type
-        try:
-            metadata_type = MetadataType(type_str)
-        except ValueError:
-            metadata_type = MetadataType.from_russian(type_str)
-            if metadata_type is None:
-                return {"error": f"Unknown metadata type: {type_str}"}
+        metadata_type = parse_metadata_type(type_str)
 
         # Parse module type
         try:
@@ -73,7 +71,7 @@ class CodeModuleTool(BaseTool):
             return {"error": f"Unknown module type: {module_str}"}
 
         # Get module
-        engine = CodeEngine.get_instance()
+        engine = self._engine
         module = await engine.get_module(metadata_type, name, module_type)
 
         if module is None:
@@ -116,7 +114,7 @@ class CodeModuleTool(BaseTool):
 class CodeProcedureTool(BaseTool):
     """Get code of a specific procedure or function."""
 
-    name: ClassVar[str] = "code.procedure"
+    name: ClassVar[str] = "code-procedure"
     description: ClassVar[str] = (
         "Get the code of a specific procedure or function from a module. "
         "Returns the procedure code with signature and parameters."
@@ -145,6 +143,10 @@ class CodeProcedureTool(BaseTool):
         "required": ["type", "name", "procedure"],
     }
 
+    def __init__(self, engine: CodeEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Get procedure code."""
         type_str = arguments["type"]
@@ -152,13 +154,7 @@ class CodeProcedureTool(BaseTool):
         proc_name = arguments["procedure"]
         module_str = arguments.get("module", "ObjectModule")
 
-        # Parse types
-        try:
-            metadata_type = MetadataType(type_str)
-        except ValueError:
-            metadata_type = MetadataType.from_russian(type_str)
-            if metadata_type is None:
-                return {"error": f"Unknown metadata type: {type_str}"}
+        metadata_type = parse_metadata_type(type_str)
 
         try:
             module_type = ModuleType(module_str)
@@ -166,7 +162,7 @@ class CodeProcedureTool(BaseTool):
             return {"error": f"Unknown module type: {module_str}"}
 
         # Get procedure
-        engine = CodeEngine.get_instance()
+        engine = self._engine
         procedure = await engine.get_procedure(
             metadata_type,
             obj_name,
@@ -207,7 +203,7 @@ class CodeProcedureTool(BaseTool):
 class CodeResolveTool(BaseTool):
     """Find definition of a procedure or function."""
 
-    name: ClassVar[str] = "code.resolve"
+    name: ClassVar[str] = "code-resolve"
     description: ClassVar[str] = (
         "Find the definition of a procedure, function, or identifier. "
         "Searches across the configuration for the definition."
@@ -227,6 +223,10 @@ class CodeResolveTool(BaseTool):
         "required": ["identifier"],
     }
 
+    def __init__(self, engine: CodeEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Find definition."""
         identifier = arguments["identifier"]
@@ -234,7 +234,7 @@ class CodeResolveTool(BaseTool):
 
         search_path = Path(path_str) if path_str else None
 
-        engine = CodeEngine.get_instance()
+        engine = self._engine
         definitions = await engine.find_definition(identifier, search_path)
 
         if not definitions:
@@ -262,7 +262,7 @@ class CodeResolveTool(BaseTool):
 class CodeUsagesTool(BaseTool):
     """Find all usages of a procedure or identifier."""
 
-    name: ClassVar[str] = "code.usages"
+    name: ClassVar[str] = "code-usages"
     description: ClassVar[str] = (
         "Find all usages (calls) of a procedure, function, or identifier. "
         "Searches across the configuration."
@@ -287,6 +287,10 @@ class CodeUsagesTool(BaseTool):
         "required": ["identifier"],
     }
 
+    def __init__(self, engine: CodeEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Find usages."""
         identifier = arguments["identifier"]
@@ -295,7 +299,7 @@ class CodeUsagesTool(BaseTool):
 
         search_path = Path(path_str) if path_str else None
 
-        engine = CodeEngine.get_instance()
+        engine = self._engine
         usages = await engine.find_usages(identifier, search_path, limit)
 
         # Group by file
@@ -326,7 +330,7 @@ class CodeUsagesTool(BaseTool):
 class CodeDependenciesTool(BaseTool):
     """Analyze code dependencies."""
 
-    name: ClassVar[str] = "code.dependencies"
+    name: ClassVar[str] = "code-dependencies"
     description: ClassVar[str] = (
         "Analyze dependencies for a procedure or module. "
         "Shows what procedures call this one (callers), "
@@ -367,6 +371,10 @@ class CodeDependenciesTool(BaseTool):
         "required": ["type", "name"],
     }
 
+    def __init__(self, engine: CodeEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Analyze dependencies."""
         type_str = arguments["type"]
@@ -376,13 +384,7 @@ class CodeDependenciesTool(BaseTool):
         depth = arguments.get("depth", 1)
         include_metadata = arguments.get("include_metadata", True)
 
-        # Parse types
-        try:
-            metadata_type = MetadataType(type_str)
-        except ValueError:
-            metadata_type = MetadataType.from_russian(type_str)
-            if metadata_type is None:
-                return {"error": f"Unknown metadata type: {type_str}"}
+        metadata_type = parse_metadata_type(type_str)
 
         try:
             module_type = ModuleType(module_str)
@@ -390,7 +392,7 @@ class CodeDependenciesTool(BaseTool):
             return {"error": f"Unknown module type: {module_str}"}
 
         # Get module path
-        code_engine = CodeEngine.get_instance()
+        code_engine = self._engine
         module = await code_engine.get_module(metadata_type, obj_name, module_type)
 
         if module is None:
@@ -473,7 +475,7 @@ class CodeDependenciesTool(BaseTool):
 class CodeAnalyzeTool(BaseTool):
     """Extended code analysis for a module."""
 
-    name: ClassVar[str] = "code.analyze"
+    name: ClassVar[str] = "code-analyze"
     description: ClassVar[str] = (
         "Perform extended analysis of a BSL module. "
         "Extracts method calls, metadata references, queries, and variable usages."
@@ -506,6 +508,10 @@ class CodeAnalyzeTool(BaseTool):
         "required": ["type", "name"],
     }
 
+    def __init__(self, engine: CodeEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Perform extended analysis."""
         type_str = arguments["type"]
@@ -513,13 +519,7 @@ class CodeAnalyzeTool(BaseTool):
         module_str = arguments.get("module", "ObjectModule")
         analysis_type = arguments.get("analysis_type", "full")
 
-        # Parse types
-        try:
-            metadata_type = MetadataType(type_str)
-        except ValueError:
-            metadata_type = MetadataType.from_russian(type_str)
-            if metadata_type is None:
-                return {"error": f"Unknown metadata type: {type_str}"}
+        metadata_type = parse_metadata_type(type_str)
 
         try:
             module_type = ModuleType(module_str)
@@ -527,7 +527,7 @@ class CodeAnalyzeTool(BaseTool):
             return {"error": f"Unknown module type: {module_str}"}
 
         # Get module
-        code_engine = CodeEngine.get_instance()
+        code_engine = self._engine
         module = await code_engine.get_module(metadata_type, obj_name, module_type)
 
         if module is None:
@@ -610,7 +610,7 @@ class CodeAnalyzeTool(BaseTool):
 class CodeCallGraphTool(BaseTool):
     """Build call graph for procedures."""
 
-    name: ClassVar[str] = "code.callgraph"
+    name: ClassVar[str] = "code-callgraph"
     description: ClassVar[str] = (
         "Build a call graph showing which procedures call which. "
         "Can show callers (who calls this) or callees (what this calls)."
@@ -644,6 +644,10 @@ class CodeCallGraphTool(BaseTool):
         "required": ["type", "name", "procedure"],
     }
 
+    def __init__(self, engine: CodeEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Build call graph."""
         type_str = arguments["type"]
@@ -652,13 +656,7 @@ class CodeCallGraphTool(BaseTool):
         module_str = arguments.get("module", "ObjectModule")
         direction = arguments.get("direction", "both")
 
-        # Parse types
-        try:
-            metadata_type = MetadataType(type_str)
-        except ValueError:
-            metadata_type = MetadataType.from_russian(type_str)
-            if metadata_type is None:
-                return {"error": f"Unknown metadata type: {type_str}"}
+        metadata_type = parse_metadata_type(type_str)
 
         try:
             module_type = ModuleType(module_str)
@@ -666,7 +664,7 @@ class CodeCallGraphTool(BaseTool):
             return {"error": f"Unknown module type: {module_str}"}
 
         # Get module
-        code_engine = CodeEngine.get_instance()
+        code_engine = self._engine
         module = await code_engine.get_module(metadata_type, obj_name, module_type)
 
         if module is None:
@@ -696,7 +694,7 @@ class CodeCallGraphTool(BaseTool):
 class CodeValidateTool(BaseTool):
     """Validate BSL code syntax."""
 
-    name: ClassVar[str] = "code.validate"
+    name: ClassVar[str] = "code-validate"
     description: ClassVar[str] = (
         "Validate BSL code for syntax errors. "
         "Uses BSL Language Server if available, otherwise performs basic validation. "
@@ -725,6 +723,10 @@ class CodeValidateTool(BaseTool):
         },
     }
 
+    def __init__(self, engine: CodeEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Validate BSL code."""
         path_str = arguments.get("path")
@@ -741,19 +743,14 @@ class CodeValidateTool(BaseTool):
             if not type_str or not obj_name:
                 return {"error": "Either 'path' or 'type'+'name' must be provided"}
 
-            try:
-                metadata_type = MetadataType(type_str)
-            except ValueError:
-                metadata_type = MetadataType.from_russian(type_str)
-                if metadata_type is None:
-                    return {"error": f"Unknown metadata type: {type_str}"}
+            metadata_type = parse_metadata_type(type_str)
 
             try:
                 module_type = ModuleType(module_str)
             except ValueError:
                 return {"error": f"Unknown module type: {module_str}"}
 
-            code_engine = CodeEngine.get_instance()
+            code_engine = self._engine
             module = await code_engine.get_module(metadata_type, obj_name, module_type)
 
             if module is None:
@@ -787,7 +784,7 @@ class CodeValidateTool(BaseTool):
 class CodeLintTool(BaseTool):
     """Run static analysis on BSL code."""
 
-    name: ClassVar[str] = "code.lint"
+    name: ClassVar[str] = "code-lint"
     description: ClassVar[str] = (
         "Run static analysis (linting) on BSL code. "
         "Detects code style issues, potential bugs, and best practice violations. "
@@ -821,6 +818,10 @@ class CodeLintTool(BaseTool):
         },
     }
 
+    def __init__(self, engine: CodeEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Run linting."""
         path_str = arguments.get("path")
@@ -836,19 +837,14 @@ class CodeLintTool(BaseTool):
             if not type_str or not obj_name:
                 return {"error": "Either 'path' or 'type'+'name' must be provided"}
 
-            try:
-                metadata_type = MetadataType(type_str)
-            except ValueError:
-                metadata_type = MetadataType.from_russian(type_str)
-                if metadata_type is None:
-                    return {"error": f"Unknown metadata type: {type_str}"}
+            metadata_type = parse_metadata_type(type_str)
 
             try:
                 module_type = ModuleType(module_str)
             except ValueError:
                 return {"error": f"Unknown module type: {module_str}"}
 
-            code_engine = CodeEngine.get_instance()
+            code_engine = self._engine
             module = await code_engine.get_module(metadata_type, obj_name, module_type)
 
             if module is None:
@@ -894,7 +890,7 @@ class CodeLintTool(BaseTool):
 class CodeFormatTool(BaseTool):
     """Format BSL code."""
 
-    name: ClassVar[str] = "code.format"
+    name: ClassVar[str] = "code-format"
     description: ClassVar[str] = (
         "Format BSL code according to style guidelines. "
         "Uses BSL Language Server if available, otherwise applies basic formatting. "
@@ -928,6 +924,10 @@ class CodeFormatTool(BaseTool):
         },
     }
 
+    def __init__(self, engine: CodeEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Format BSL code."""
         path_str = arguments.get("path")
@@ -943,19 +943,14 @@ class CodeFormatTool(BaseTool):
             if not type_str or not obj_name:
                 return {"error": "Either 'path' or 'type'+'name' must be provided"}
 
-            try:
-                metadata_type = MetadataType(type_str)
-            except ValueError:
-                metadata_type = MetadataType.from_russian(type_str)
-                if metadata_type is None:
-                    return {"error": f"Unknown metadata type: {type_str}"}
+            metadata_type = parse_metadata_type(type_str)
 
             try:
                 module_type = ModuleType(module_str)
             except ValueError:
                 return {"error": f"Unknown module type: {module_str}"}
 
-            code_engine = CodeEngine.get_instance()
+            code_engine = self._engine
             module = await code_engine.get_module(metadata_type, obj_name, module_type)
 
             if module is None:
@@ -1007,7 +1002,7 @@ class CodeFormatTool(BaseTool):
 class CodeComplexityTool(BaseTool):
     """Analyze code complexity."""
 
-    name: ClassVar[str] = "code.complexity"
+    name: ClassVar[str] = "code-complexity"
     description: ClassVar[str] = (
         "Analyze code complexity metrics. "
         "Calculates cyclomatic complexity, cognitive complexity, "
@@ -1041,6 +1036,10 @@ class CodeComplexityTool(BaseTool):
         },
     }
 
+    def __init__(self, engine: CodeEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Analyze complexity."""
         path_str = arguments.get("path")
@@ -1056,19 +1055,14 @@ class CodeComplexityTool(BaseTool):
             if not type_str or not obj_name:
                 return {"error": "Either 'path' or 'type'+'name' must be provided"}
 
-            try:
-                metadata_type = MetadataType(type_str)
-            except ValueError:
-                metadata_type = MetadataType.from_russian(type_str)
-                if metadata_type is None:
-                    return {"error": f"Unknown metadata type: {type_str}"}
+            metadata_type = parse_metadata_type(type_str)
 
             try:
                 module_type = ModuleType(module_str)
             except ValueError:
                 return {"error": f"Unknown module type: {module_str}"}
 
-            code_engine = CodeEngine.get_instance()
+            code_engine = self._engine
             module = await code_engine.get_module(metadata_type, obj_name, module_type)
 
             if module is None:

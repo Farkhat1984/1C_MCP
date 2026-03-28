@@ -404,22 +404,38 @@ class DependencyGraph(BaseModel):
         """Get all nodes that call given node."""
         return [e.source for e in self.edges if e.target == node]
 
-    def get_dependencies(self, node: str, depth: int = 1) -> dict:
-        """Get dependency tree for node."""
-        if depth <= 0:
+    def get_dependencies(
+        self,
+        node: str,
+        depth: int = 1,
+        _visited: set[str] | None = None,
+    ) -> dict:
+        """Get dependency tree for node with cycle detection.
+
+        Args:
+            node: Node identifier
+            depth: Maximum recursion depth
+            _visited: Internal set tracking visited nodes to prevent cycles
+        """
+        if _visited is None:
+            _visited = set()
+
+        if depth <= 0 or node in _visited:
             return {"node": node, "callees": [], "callers": []}
+
+        _visited.add(node)
 
         callees = []
         for callee in self.get_callees(node):
             if depth > 1:
-                callees.append(self.get_dependencies(callee, depth - 1))
+                callees.append(self.get_dependencies(callee, depth - 1, _visited))
             else:
                 callees.append({"node": callee})
 
         callers = []
         for caller in self.get_callers(node):
             if depth > 1:
-                callers.append(self.get_dependencies(caller, depth - 1))
+                callers.append(self.get_dependencies(caller, depth - 1, _visited))
             else:
                 callers.append({"node": caller})
 

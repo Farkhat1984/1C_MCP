@@ -2,12 +2,14 @@
 Configuration tools for accessing 1C:Enterprise configuration objects.
 
 Tools:
-- config.options - Get functional options
-- config.constants - Get constants
-- config.scheduled_jobs - Get scheduled jobs
-- config.event_subscriptions - Get event subscriptions
-- config.exchanges - Get exchange plans
-- config.http_services - Get HTTP services
+- config-objects - Consolidated tool for options, constants, scheduled jobs,
+                   event subscriptions, exchanges, and HTTP services
+- config.options - Get functional options  (legacy, kept for internal use)
+- config.constants - Get constants  (legacy, kept for internal use)
+- config.scheduled_jobs - Get scheduled jobs  (legacy, kept for internal use)
+- config.event_subscriptions - Get event subscriptions  (legacy, kept for internal use)
+- config.exchanges - Get exchange plans  (legacy, kept for internal use)
+- config.http_services - Get HTTP services  (legacy, kept for internal use)
 """
 
 from typing import Any, ClassVar
@@ -17,10 +19,134 @@ from mcp_1c.engines.metadata import MetadataEngine
 from mcp_1c.tools.base import BaseTool
 
 
+# ---------------------------------------------------------------------------
+# Type-to-MetadataType mapping for the consolidated tool
+# ---------------------------------------------------------------------------
+
+_CONFIG_OBJECT_TYPES: dict[str, MetadataType] = {
+    "options": MetadataType.FUNCTIONAL_OPTION,
+    "constants": MetadataType.CONSTANT,
+    "scheduled_jobs": MetadataType.SCHEDULED_JOB,
+    "event_subscriptions": MetadataType.EVENT_SUBSCRIPTION,
+    "exchanges": MetadataType.EXCHANGE_PLAN,
+    "http_services": MetadataType.HTTP_SERVICE,
+}
+
+_CONFIG_TYPE_LABELS: dict[str, str] = {
+    "options": "FunctionalOption",
+    "constants": "Constant",
+    "scheduled_jobs": "ScheduledJob",
+    "event_subscriptions": "EventSubscription",
+    "exchanges": "ExchangePlan",
+    "http_services": "HTTPService",
+}
+
+
+class ConfigObjectsTool(BaseTool):
+    """Consolidated tool for querying configuration objects by type.
+
+    Replaces six separate config-* tools with a single tool that dispatches
+    by a required ``type`` parameter.
+    """
+
+    name: ClassVar[str] = "config-objects"
+    description: ClassVar[str] = (
+        "Get configuration objects (functional options, constants, scheduled jobs, "
+        "event subscriptions, exchange plans, or HTTP services). "
+        "Pass 'type' to select the kind of object and optionally 'name' to get details."
+    )
+    input_schema: ClassVar[dict[str, Any]] = {
+        "type": "object",
+        "properties": {
+            "type": {
+                "type": "string",
+                "enum": [
+                    "options",
+                    "constants",
+                    "scheduled_jobs",
+                    "event_subscriptions",
+                    "exchanges",
+                    "http_services",
+                ],
+                "description": (
+                    "Kind of configuration object to retrieve: "
+                    "options | constants | scheduled_jobs | event_subscriptions | exchanges | http_services"
+                ),
+            },
+            "name": {
+                "type": "string",
+                "description": "Object name (optional — omit to list all objects of the given type)",
+            },
+        },
+        "required": ["type"],
+    }
+
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
+    async def execute(self, arguments: dict[str, Any]) -> Any:
+        """Dispatch to the appropriate config object query."""
+        obj_type: str = arguments["type"]
+        name: str | None = arguments.get("name")
+
+        metadata_type = _CONFIG_OBJECT_TYPES.get(obj_type)
+        if metadata_type is None:
+            return {"error": f"Unknown config object type: '{obj_type}'"}
+
+        label = _CONFIG_TYPE_LABELS[obj_type]
+        engine = self._engine
+
+        if name:
+            obj = await engine.get_object(metadata_type, name)
+            if not obj:
+                return {"error": f"{label} '{name}' not found"}
+
+            result: dict[str, Any] = {
+                "name": obj.name,
+                "synonym": obj.synonym,
+                "comment": obj.comment,
+                "uuid": obj.uuid,
+                "full_name": obj.full_name,
+            }
+
+            # Type-specific enrichment
+            if obj_type == "constants" and obj.attributes:
+                attr = obj.attributes[0]
+                result["type_info"] = attr.type
+                result["type_description"] = attr.type_description
+            elif obj_type == "exchanges":
+                result["attributes"] = [
+                    {"name": a.name, "synonym": a.synonym, "type": a.type}
+                    for a in obj.attributes
+                ]
+                result["tabular_sections"] = [
+                    {"name": ts.name, "synonym": ts.synonym, "attributes_count": len(ts.attributes)}
+                    for ts in obj.tabular_sections
+                ]
+
+            return result
+        else:
+            objects = await engine.list_objects(metadata_type)
+            items = [
+                {
+                    "name": o.name,
+                    "synonym": o.synonym,
+                    "full_name": o.full_name,
+                }
+                for o in objects
+            ]
+            return {
+                "type": label,
+                "count": len(items),
+                "objects": items,
+            }
+
+
 class ConfigOptionsTool(BaseTool):
     """Get functional options from configuration."""
 
-    name: ClassVar[str] = "config.options"
+    name: ClassVar[str] = "config-options"
     description: ClassVar[str] = (
         "Get functional options list or details of a specific option. "
         "Functional options control availability of configuration features."
@@ -40,12 +166,16 @@ class ConfigOptionsTool(BaseTool):
         },
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Get functional options."""
         name = arguments.get("name")
         include_usage = arguments.get("include_usage", False)
 
-        engine = MetadataEngine.get_instance()
+        engine = self._engine
 
         if name:
             # Get specific functional option
@@ -90,7 +220,7 @@ class ConfigOptionsTool(BaseTool):
 class ConfigConstantsTool(BaseTool):
     """Get constants from configuration."""
 
-    name: ClassVar[str] = "config.constants"
+    name: ClassVar[str] = "config-constants"
     description: ClassVar[str] = (
         "Get constants list or details of a specific constant. "
         "Constants store single values that are rarely changed."
@@ -110,12 +240,16 @@ class ConfigConstantsTool(BaseTool):
         },
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Get constants."""
         name = arguments.get("name")
         include_type = arguments.get("include_type", True)
 
-        engine = MetadataEngine.get_instance()
+        engine = self._engine
 
         if name:
             # Get specific constant
@@ -158,7 +292,7 @@ class ConfigConstantsTool(BaseTool):
 class ConfigScheduledJobsTool(BaseTool):
     """Get scheduled jobs from configuration."""
 
-    name: ClassVar[str] = "config.scheduled_jobs"
+    name: ClassVar[str] = "config-scheduled_jobs"
     description: ClassVar[str] = (
         "Get scheduled jobs list or details of a specific job. "
         "Scheduled jobs execute procedures on a schedule."
@@ -178,12 +312,16 @@ class ConfigScheduledJobsTool(BaseTool):
         },
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Get scheduled jobs."""
         name = arguments.get("name")
         include_details = arguments.get("include_details", True)
 
-        engine = MetadataEngine.get_instance()
+        engine = self._engine
 
         if name:
             # Get specific scheduled job
@@ -226,7 +364,7 @@ class ConfigScheduledJobsTool(BaseTool):
 class ConfigEventSubscriptionsTool(BaseTool):
     """Get event subscriptions from configuration."""
 
-    name: ClassVar[str] = "config.event_subscriptions"
+    name: ClassVar[str] = "config-event_subscriptions"
     description: ClassVar[str] = (
         "Get event subscriptions list or details of a specific subscription. "
         "Event subscriptions handle object events (OnWrite, BeforeWrite, etc.)."
@@ -245,12 +383,16 @@ class ConfigEventSubscriptionsTool(BaseTool):
         },
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Get event subscriptions."""
         name = arguments.get("name")
         filter_event = arguments.get("filter_event")
 
-        engine = MetadataEngine.get_instance()
+        engine = self._engine
 
         if name:
             # Get specific event subscription
@@ -299,7 +441,7 @@ class ConfigEventSubscriptionsTool(BaseTool):
 class ConfigExchangesTool(BaseTool):
     """Get exchange plans from configuration."""
 
-    name: ClassVar[str] = "config.exchanges"
+    name: ClassVar[str] = "config-exchanges"
     description: ClassVar[str] = (
         "Get exchange plans list or details of a specific exchange plan. "
         "Exchange plans define data exchange between distributed databases."
@@ -319,12 +461,16 @@ class ConfigExchangesTool(BaseTool):
         },
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Get exchange plans."""
         name = arguments.get("name")
         include_content = arguments.get("include_content", True)
 
-        engine = MetadataEngine.get_instance()
+        engine = self._engine
 
         if name:
             # Get specific exchange plan
@@ -380,7 +526,7 @@ class ConfigExchangesTool(BaseTool):
 class ConfigHttpServicesTool(BaseTool):
     """Get HTTP services from configuration."""
 
-    name: ClassVar[str] = "config.http_services"
+    name: ClassVar[str] = "config-http_services"
     description: ClassVar[str] = (
         "Get HTTP services list or details of a specific service. "
         "HTTP services provide REST API endpoints."
@@ -400,12 +546,16 @@ class ConfigHttpServicesTool(BaseTool):
         },
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Get HTTP services."""
         name = arguments.get("name")
         include_templates = arguments.get("include_templates", True)
 
-        engine = MetadataEngine.get_instance()
+        engine = self._engine
 
         if name:
             # Get specific HTTP service

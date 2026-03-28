@@ -265,8 +265,9 @@ class TestQueryExplainTool:
             """,
         })
 
-        assert "Анализ запроса" in result
-        assert "Источники данных" in result
+        assert "explanation" in result
+        assert "Анализ запроса" in result["explanation"]
+        assert "Источники данных" in result["explanation"]
 
 
 class TestQueryTablesTool:
@@ -304,9 +305,14 @@ class TestPatternListTool:
         """Test listing all patterns."""
         result = await self.tool.execute({})
 
-        assert result["total"] > 0
-        assert len(result["templates"]) > 0
-        assert len(result["categories"]) > 0
+        assert result["total"] >= 20
+        assert len(result["templates"]) == result["total"]
+        assert len(result["categories"]) >= 4
+        # Each template should have required fields
+        for t in result["templates"][:5]:
+            assert "id" in t
+            assert "name" in t
+            assert "category" in t
 
     @pytest.mark.asyncio
     async def test_list_by_category(self) -> None:
@@ -333,8 +339,14 @@ class TestPatternGetTool:
 
         assert "error" not in result
         assert result["id"] == "query.select_simple"
-        assert len(result["placeholders"]) > 0
+        assert len(result["placeholders"]) >= 2
         assert "template_code" in result
+        assert result["template_code"] != ""
+        assert "category" in result
+        assert result["category"] == "query"
+        # Should have TableName placeholder
+        placeholder_names = [p["name"] for p in result["placeholders"]]
+        assert "TableName" in placeholder_names
 
     @pytest.mark.asyncio
     async def test_get_nonexistent_pattern(self) -> None:

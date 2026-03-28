@@ -56,6 +56,9 @@ class TestMetadataEngineIntegration:
         assert len(catalogs) >= 1
         names = [c.name for c in catalogs]
         assert "Товары" in names
+        # All returned objects should be catalogs
+        for c in catalogs:
+            assert c.metadata_type == MetadataType.CATALOG
 
     @pytest.mark.asyncio
     async def test_get_object(self, engine: MetadataEngine) -> None:
@@ -72,7 +75,10 @@ class TestMetadataEngineIntegration:
         obj = await engine.get_object(MetadataType.CATALOG, "Товары")
 
         assert obj is not None
-        assert len(obj.attributes) > 0
+        assert len(obj.attributes) == 2
+        attr_names = [a.name for a in obj.attributes]
+        assert "Артикул" in attr_names
+        assert "ЕдиницаИзмерения" in attr_names
 
     @pytest.mark.asyncio
     async def test_get_nonexistent_object(self, engine: MetadataEngine) -> None:
@@ -112,9 +118,16 @@ class TestMetadataEngineIntegration:
         """Test getting object attributes directly."""
         attributes = await engine.get_attributes(MetadataType.CATALOG, "Товары")
 
-        assert len(attributes) >= 1
+        assert len(attributes) == 2
         attr_names = [a.name for a in attributes]
         assert "Артикул" in attr_names
+        assert "ЕдиницаИзмерения" in attr_names
+
+        # Verify attribute details
+        article = next(a for a in attributes if a.name == "Артикул")
+        assert article.type == "String"
+        assert article.indexed is True
+        assert article.synonym == "Артикул"
 
     @pytest.mark.asyncio
     async def test_get_object_tabular_sections(self, engine: MetadataEngine) -> None:
@@ -122,9 +135,13 @@ class TestMetadataEngineIntegration:
         obj = await engine.get_object(MetadataType.CATALOG, "Товары")
 
         assert obj is not None
-        assert len(obj.tabular_sections) >= 1
-        ts_names = [ts.name for ts in obj.tabular_sections]
-        assert "Штрихкоды" in ts_names
+        assert len(obj.tabular_sections) == 1
+        ts = obj.tabular_sections[0]
+        assert ts.name == "Штрихкоды"
+        assert ts.synonym == "Штрихкоды"
+        assert len(ts.attributes) == 1
+        assert ts.attributes[0].name == "Штрихкод"
+        assert ts.attributes[0].type == "String"
 
     @pytest.mark.asyncio
     async def test_get_document_with_registers(self, engine: MetadataEngine) -> None:
@@ -132,7 +149,9 @@ class TestMetadataEngineIntegration:
         obj = await engine.get_object(MetadataType.DOCUMENT, "ПриходТовара")
 
         assert obj is not None
-        assert len(obj.register_records) >= 1
+        assert obj.posting is True
+        assert len(obj.register_records) == 1
+        assert "РегистрНакопления.ОстаткиТоваров" in obj.register_records
 
     @pytest.mark.asyncio
     async def test_get_register_dimensions(self, engine: MetadataEngine) -> None:
@@ -143,9 +162,15 @@ class TestMetadataEngineIntegration:
         )
 
         assert obj is not None
-        assert len(obj.dimensions) >= 1
+        assert obj.synonym == "Цены товаров"
+        assert len(obj.dimensions) == 2
         dim_names = [d.name for d in obj.dimensions]
         assert "Товар" in dim_names
+        assert "ТипЦены" in dim_names
+
+        assert len(obj.resources) == 1
+        assert obj.resources[0].name == "Цена"
+        assert obj.resources[0].type == "Number"
 
     @pytest.mark.asyncio
     async def test_singleton_pattern(self, mock_config_path: Path) -> None:

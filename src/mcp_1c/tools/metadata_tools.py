@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 import json
 
-from mcp_1c.tools.base import BaseTool
+from mcp_1c.tools.base import BaseTool, parse_metadata_type
 from mcp_1c.engines.metadata import MetadataEngine
 from mcp_1c.domain.metadata import MetadataType
 
@@ -16,7 +16,7 @@ from mcp_1c.domain.metadata import MetadataType
 class MetadataInitTool(BaseTool):
     """Initialize metadata index for a configuration."""
 
-    name: ClassVar[str] = "metadata.init"
+    name: ClassVar[str] = "metadata-init"
     description: ClassVar[str] = (
         "Initialize the metadata index for a 1C configuration. "
         "Must be called before using other metadata tools. "
@@ -38,18 +38,21 @@ class MetadataInitTool(BaseTool):
         "required": ["path"],
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Execute metadata initialization."""
         config_path = Path(arguments["path"])
         full_reindex = arguments.get("full_reindex", False)
 
-        engine = MetadataEngine.get_instance()
-        progress = await engine.initialize(
+        progress = await self._engine.initialize(
             config_path,
             full_reindex=full_reindex,
         )
 
-        stats = await engine.get_stats()
+        stats = await self._engine.get_stats()
 
         return {
             "status": "success",
@@ -65,7 +68,7 @@ class MetadataInitTool(BaseTool):
 class MetadataListTool(BaseTool):
     """List metadata objects by type."""
 
-    name: ClassVar[str] = "metadata.list"
+    name: ClassVar[str] = "metadata-list"
     description: ClassVar[str] = (
         "List all metadata objects of a specific type. "
         "Returns names and synonyms of objects."
@@ -84,20 +87,16 @@ class MetadataListTool(BaseTool):
         "required": ["type"],
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """List objects of specified type."""
         type_str = arguments["type"]
+        metadata_type = parse_metadata_type(type_str)
 
-        try:
-            metadata_type = MetadataType(type_str)
-        except ValueError:
-            # Try Russian name
-            metadata_type = MetadataType.from_russian(type_str)
-            if metadata_type is None:
-                return {"error": f"Unknown metadata type: {type_str}"}
-
-        engine = MetadataEngine.get_instance()
-        objects = await engine.list_objects(metadata_type)
+        objects = await self._engine.list_objects(metadata_type)
 
         return {
             "type": metadata_type.value,
@@ -116,7 +115,7 @@ class MetadataListTool(BaseTool):
 class MetadataGetTool(BaseTool):
     """Get detailed information about a metadata object."""
 
-    name: ClassVar[str] = "metadata.get"
+    name: ClassVar[str] = "metadata-get"
     description: ClassVar[str] = (
         "Get full information about a specific metadata object including "
         "attributes, tabular sections, forms, templates, and modules."
@@ -136,20 +135,17 @@ class MetadataGetTool(BaseTool):
         "required": ["type", "name"],
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Get object details."""
         type_str = arguments["type"]
         name = arguments["name"]
+        metadata_type = parse_metadata_type(type_str)
 
-        try:
-            metadata_type = MetadataType(type_str)
-        except ValueError:
-            metadata_type = MetadataType.from_russian(type_str)
-            if metadata_type is None:
-                return {"error": f"Unknown metadata type: {type_str}"}
-
-        engine = MetadataEngine.get_instance()
-        obj = await engine.get_object(metadata_type, name)
+        obj = await self._engine.get_object(metadata_type, name)
 
         if obj is None:
             return {"error": f"Object not found: {type_str}.{name}"}
@@ -205,7 +201,7 @@ class MetadataGetTool(BaseTool):
 class MetadataSearchTool(BaseTool):
     """Search metadata objects by name or synonym."""
 
-    name: ClassVar[str] = "metadata.search"
+    name: ClassVar[str] = "metadata-search"
     description: ClassVar[str] = (
         "Search for metadata objects by name or synonym. "
         "Supports partial matching and optional type filtering."
@@ -230,6 +226,10 @@ class MetadataSearchTool(BaseTool):
         "required": ["query"],
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Search for objects."""
         query = arguments["query"]
@@ -238,13 +238,9 @@ class MetadataSearchTool(BaseTool):
 
         metadata_type = None
         if type_str:
-            try:
-                metadata_type = MetadataType(type_str)
-            except ValueError:
-                metadata_type = MetadataType.from_russian(type_str)
+            metadata_type = parse_metadata_type(type_str)
 
-        engine = MetadataEngine.get_instance()
-        objects = await engine.search(query, metadata_type, limit)
+        objects = await self._engine.search(query, metadata_type, limit)
 
         return {
             "query": query,
@@ -264,7 +260,7 @@ class MetadataSearchTool(BaseTool):
 class MetadataTreeTool(BaseTool):
     """Get subsystem tree structure."""
 
-    name: ClassVar[str] = "metadata.tree"
+    name: ClassVar[str] = "metadata-tree"
     description: ClassVar[str] = (
         "Get the subsystem tree structure of the configuration. "
         "Shows hierarchical organization of objects."
@@ -279,12 +275,15 @@ class MetadataTreeTool(BaseTool):
         },
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Get subsystem tree."""
         parent = arguments.get("parent")
 
-        engine = MetadataEngine.get_instance()
-        subsystems = await engine.get_subsystem_tree(parent)
+        subsystems = await self._engine.get_subsystem_tree(parent)
 
         return {
             "parent": parent or "(root)",
@@ -304,7 +303,7 @@ class MetadataTreeTool(BaseTool):
 class MetadataAttributesTool(BaseTool):
     """Get attributes of a metadata object."""
 
-    name: ClassVar[str] = "metadata.attributes"
+    name: ClassVar[str] = "metadata-attributes"
     description: ClassVar[str] = (
         "Get detailed list of attributes (requisites) of a metadata object. "
         "For registers, also returns dimensions and resources."
@@ -329,21 +328,18 @@ class MetadataAttributesTool(BaseTool):
         "required": ["type", "name"],
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Get object attributes."""
         type_str = arguments["type"]
         name = arguments["name"]
         include_tabular = arguments.get("include_tabular", True)
+        metadata_type = parse_metadata_type(type_str)
 
-        try:
-            metadata_type = MetadataType(type_str)
-        except ValueError:
-            metadata_type = MetadataType.from_russian(type_str)
-            if metadata_type is None:
-                return {"error": f"Unknown metadata type: {type_str}"}
-
-        engine = MetadataEngine.get_instance()
-        obj = await engine.get_object(metadata_type, name)
+        obj = await self._engine.get_object(metadata_type, name)
 
         if obj is None:
             return {"error": f"Object not found: {type_str}.{name}"}
@@ -399,7 +395,7 @@ class MetadataAttributesTool(BaseTool):
 class MetadataFormsTool(BaseTool):
     """Get forms of a metadata object."""
 
-    name: ClassVar[str] = "metadata.forms"
+    name: ClassVar[str] = "metadata-forms"
     description: ClassVar[str] = (
         "Get list of forms for a metadata object."
     )
@@ -418,20 +414,17 @@ class MetadataFormsTool(BaseTool):
         "required": ["type", "name"],
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Get object forms."""
         type_str = arguments["type"]
         name = arguments["name"]
+        metadata_type = parse_metadata_type(type_str)
 
-        try:
-            metadata_type = MetadataType(type_str)
-        except ValueError:
-            metadata_type = MetadataType.from_russian(type_str)
-            if metadata_type is None:
-                return {"error": f"Unknown metadata type: {type_str}"}
-
-        engine = MetadataEngine.get_instance()
-        obj = await engine.get_object(metadata_type, name)
+        obj = await self._engine.get_object(metadata_type, name)
 
         if obj is None:
             return {"error": f"Object not found: {type_str}.{name}"}
@@ -453,7 +446,7 @@ class MetadataFormsTool(BaseTool):
 class MetadataTemplatesTool(BaseTool):
     """Get templates (layouts) of a metadata object."""
 
-    name: ClassVar[str] = "metadata.templates"
+    name: ClassVar[str] = "metadata-templates"
     description: ClassVar[str] = (
         "Get list of templates (layouts) for a metadata object."
     )
@@ -472,20 +465,17 @@ class MetadataTemplatesTool(BaseTool):
         "required": ["type", "name"],
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Get object templates."""
         type_str = arguments["type"]
         name = arguments["name"]
+        metadata_type = parse_metadata_type(type_str)
 
-        try:
-            metadata_type = MetadataType(type_str)
-        except ValueError:
-            metadata_type = MetadataType.from_russian(type_str)
-            if metadata_type is None:
-                return {"error": f"Unknown metadata type: {type_str}"}
-
-        engine = MetadataEngine.get_instance()
-        obj = await engine.get_object(metadata_type, name)
+        obj = await self._engine.get_object(metadata_type, name)
 
         if obj is None:
             return {"error": f"Object not found: {type_str}.{name}"}
@@ -506,7 +496,7 @@ class MetadataTemplatesTool(BaseTool):
 class MetadataRegistersTool(BaseTool):
     """Get registers that a document writes to."""
 
-    name: ClassVar[str] = "metadata.registers"
+    name: ClassVar[str] = "metadata-registers"
     description: ClassVar[str] = (
         "Get list of registers that a document writes to (register records)."
     )
@@ -521,12 +511,15 @@ class MetadataRegistersTool(BaseTool):
         "required": ["document"],
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Get document registers."""
         doc_name = arguments["document"]
 
-        engine = MetadataEngine.get_instance()
-        obj = await engine.get_object(MetadataType.DOCUMENT, doc_name)
+        obj = await self._engine.get_object(MetadataType.DOCUMENT, doc_name)
 
         if obj is None:
             return {"error": f"Document not found: {doc_name}"}
@@ -541,7 +534,7 @@ class MetadataRegistersTool(BaseTool):
 class MetadataReferencesTool(BaseTool):
     """Get references and relations of a metadata object."""
 
-    name: ClassVar[str] = "metadata.references"
+    name: ClassVar[str] = "metadata-references"
     description: ClassVar[str] = (
         "Get references and relations of a metadata object: "
         "subsystems, based_on documents, produced documents."
@@ -561,20 +554,17 @@ class MetadataReferencesTool(BaseTool):
         "required": ["type", "name"],
     }
 
+    def __init__(self, engine: MetadataEngine) -> None:
+        super().__init__()
+        self._engine = engine
+
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Get object references."""
         type_str = arguments["type"]
         name = arguments["name"]
+        metadata_type = parse_metadata_type(type_str)
 
-        try:
-            metadata_type = MetadataType(type_str)
-        except ValueError:
-            metadata_type = MetadataType.from_russian(type_str)
-            if metadata_type is None:
-                return {"error": f"Unknown metadata type: {type_str}"}
-
-        engine = MetadataEngine.get_instance()
-        obj = await engine.get_object(metadata_type, name)
+        obj = await self._engine.get_object(metadata_type, name)
 
         if obj is None:
             return {"error": f"Object not found: {type_str}.{name}"}

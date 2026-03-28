@@ -29,6 +29,14 @@ from mcp_1c.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Secure XML parser — prevents XXE attacks
+_SECURE_PARSER = etree.XMLParser(
+    resolve_entities=False,
+    no_network=True,
+    dtd_validation=False,
+    load_dtd=False,
+)
+
 # Namespaces used in 1C XML exports
 NAMESPACES = {
     "v8": "http://v8.1c.ru/8.1/data/core",
@@ -101,8 +109,8 @@ class MxlParser:
         self._warnings = []
 
         try:
-            # Parse XML
-            root = etree.fromstring(content)
+            # Parse XML with secure parser
+            root = etree.fromstring(content, _SECURE_PARSER)
 
             # Create document
             document = MxlDocument(file_path=source_path)

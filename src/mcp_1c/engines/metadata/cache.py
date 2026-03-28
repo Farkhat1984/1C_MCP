@@ -101,35 +101,44 @@ class MetadataCache:
         self._batch_mode = False
 
     async def _flush_batch(self) -> None:
-        """Flush batch objects to database."""
+        """Flush batch objects to database atomically.
+
+        Wraps batch inserts in an explicit transaction so that either all
+        objects are committed or none are (atomic batch operation).
+        """
         if not self._batch_objects:
             return
 
-        async with self._connection.cursor() as cursor:
-            for obj in self._batch_objects:
-                data_json = obj.model_dump_json(
-                    exclude={"config_path", "object_path", "indexed_at"}
-                )
-                await cursor.execute("""
-                    INSERT OR REPLACE INTO metadata_objects
-                    (uuid, name, synonym, comment, metadata_type,
-                     config_path, object_path, file_hash, indexed_at, data_json)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    obj.uuid,
-                    obj.name,
-                    obj.synonym,
-                    obj.comment,
-                    obj.metadata_type.value,
-                    str(obj.config_path),
-                    str(obj.object_path),
-                    obj.file_hash,
-                    datetime.now().isoformat(),
-                    data_json,
-                ))
+        await self._connection.execute("BEGIN")
+        try:
+            async with self._connection.cursor() as cursor:
+                for obj in self._batch_objects:
+                    data_json = obj.model_dump_json(
+                        exclude={"config_path", "object_path", "indexed_at"}
+                    )
+                    await cursor.execute("""
+                        INSERT OR REPLACE INTO metadata_objects
+                        (uuid, name, synonym, comment, metadata_type,
+                         config_path, object_path, file_hash, indexed_at, data_json)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        obj.uuid,
+                        obj.name,
+                        obj.synonym,
+                        obj.comment,
+                        obj.metadata_type.value,
+                        str(obj.config_path),
+                        str(obj.object_path),
+                        obj.file_hash,
+                        datetime.now().isoformat(),
+                        data_json,
+                    ))
             await self._connection.commit()
+        except Exception:
+            await self._connection.rollback()
+            raise
 
-        # Invalidate caches
+        # Invalidate caches only after successful commit
         await self._invalidate_caches()
         self._batch_objects = []
 

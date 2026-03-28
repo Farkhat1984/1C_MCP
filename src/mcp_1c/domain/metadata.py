@@ -353,6 +353,38 @@ class MetadataObject(BaseModel):
         description="Register resources",
     )
 
+    # EventSubscription-specific
+    event_source: list[str] = Field(
+        default_factory=list,
+        description="Event subscription source objects",
+    )
+    event_handler: str = Field(
+        default="",
+        description="Event subscription handler reference",
+    )
+
+    # ScheduledJob-specific
+    method_name: str = Field(
+        default="",
+        description="Scheduled job method name",
+    )
+
+    # DefinedType-specific
+    type_constituents: list[str] = Field(
+        default_factory=list,
+        description="Constituent types of a DefinedType",
+    )
+
+    # CommonAttribute-specific
+    auto_use: str = Field(
+        default="",
+        description="CommonAttribute auto-use mode",
+    )
+    applied_objects: list[str] = Field(
+        default_factory=list,
+        description="Objects to which a CommonAttribute is applied",
+    )
+
     # Indexing metadata
     indexed_at: datetime | None = Field(
         default=None,

@@ -4,6 +4,7 @@ Main Code Engine.
 Facade for code reading, parsing, and analysis operations.
 """
 
+import os
 import re
 from pathlib import Path
 
@@ -15,6 +16,34 @@ from mcp_1c.engines.metadata import MetadataEngine
 from mcp_1c.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Configurable limit for file search scope (FIX 14)
+MAX_SEARCH_FILES: int = int(os.environ.get("MCP_MAX_SEARCH_FILES", "100"))
+
+# Regex pattern cache for dynamic patterns (FIX 13)
+_REGEX_CACHE: dict[str, re.Pattern[str]] = {}
+
+# Pre-compiled static pattern for definition-line detection
+_DEFINITION_LINE_PATTERN: re.Pattern[str] = re.compile(
+    r"^\s*(?:Процедура|Функция|Procedure|Function)\s+",
+    re.IGNORECASE,
+)
+
+
+def _get_pattern(pattern_str: str, flags: int = 0) -> re.Pattern[str]:
+    """Get or compile a cached regex pattern.
+
+    Args:
+        pattern_str: Regex pattern string.
+        flags: Regex flags.
+
+    Returns:
+        Compiled pattern.
+    """
+    cache_key = f"{pattern_str}:{flags}"
+    if cache_key not in _REGEX_CACHE:
+        _REGEX_CACHE[cache_key] = re.compile(pattern_str, flags)
+    return _REGEX_CACHE[cache_key]
 
 
 class CodeEngine:
@@ -169,15 +198,15 @@ class CodeEngine:
             else:
                 return definitions
 
-        # Search for procedure/function definitions
-        pattern = re.compile(
+        # Search for procedure/function definitions (cached per identifier)
+        pattern_str = (
             rf"^\s*(?:&[^\r\n]+[\r\n]+)?\s*"
             rf"(?:Процедура|Функция|Procedure|Function)\s+"
-            rf"({re.escape(identifier)})\s*\(",
-            re.MULTILINE | re.IGNORECASE,
+            rf"({re.escape(identifier)})\s*\("
         )
+        pattern = _get_pattern(pattern_str, re.MULTILINE | re.IGNORECASE)
 
-        for path in paths[:100]:  # Limit to prevent long searches
+        for path in paths[:MAX_SEARCH_FILES]:
             try:
                 content = await self.reader.read_file(path)
                 for match in pattern.finditer(content):
@@ -231,10 +260,9 @@ class CodeEngine:
             else:
                 return usages
 
-        # Search pattern - matches identifier as word
-        pattern = re.compile(
-            rf"\b{re.escape(identifier)}\b",
-            re.IGNORECASE,
+        # Search pattern - matches identifier as word (cached per identifier)
+        pattern = _get_pattern(
+            rf"\b{re.escape(identifier)}\b", re.IGNORECASE
         )
 
         for path in paths:
@@ -250,12 +278,8 @@ class CodeEngine:
                         break
 
                     for match in pattern.finditer(line):
-                        # Skip if it's a definition
-                        if re.match(
-                            r"^\s*(?:Процедура|Функция|Procedure|Function)\s+",
-                            line,
-                            re.IGNORECASE,
-                        ):
+                        # Skip if it's a definition (use pre-compiled pattern)
+                        if _DEFINITION_LINE_PATTERN.match(line):
                             continue
 
                         usages.append(

@@ -5,26 +5,33 @@ Parses Configuration.xml and metadata object XML files.
 Uses lxml for efficient XML processing.
 """
 
-from pathlib import Path
-from typing import Any
 import hashlib
+from pathlib import Path
 
 from lxml import etree
 
 from mcp_1c.domain.metadata import (
+    Attribute,
+    Form,
     MetadataObject,
     MetadataType,
-    Attribute,
-    TabularSection,
-    Form,
-    Template,
     Module,
     ModuleType,
     Subsystem,
+    TabularSection,
+    Template,
 )
 from mcp_1c.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Secure XML parser — prevents XXE attacks
+_SECURE_PARSER = etree.XMLParser(
+    resolve_entities=False,
+    no_network=True,
+    dtd_validation=False,
+    load_dtd=False,
+)
 
 # 1C XML namespaces
 NAMESPACES = {
@@ -69,7 +76,7 @@ class XmlParser:
 
         self.logger.info(f"Parsing configuration: {config_xml}")
 
-        tree = etree.parse(str(config_xml))
+        tree = etree.parse(str(config_xml), _SECURE_PARSER)
         root = tree.getroot()
 
         result: dict[str, list[str]] = {}
@@ -102,6 +109,11 @@ class XmlParser:
             "FunctionalOption": MetadataType.FUNCTIONAL_OPTION,
             "ScheduledJob": MetadataType.SCHEDULED_JOB,
             "EventSubscription": MetadataType.EVENT_SUBSCRIPTION,
+            "DefinedType": MetadataType.DEFINED_TYPE,
+            "CommonAttribute": MetadataType.COMMON_ATTRIBUTE,
+            "CommonPicture": MetadataType.COMMON_PICTURE,
+            "CommonCommand": MetadataType.COMMON_COMMAND,
+            "CommandGroup": MetadataType.COMMAND_GROUP,
             "HTTPService": MetadataType.HTTP_SERVICE,
             "WebService": MetadataType.WEB_SERVICE,
         }
@@ -134,6 +146,11 @@ class XmlParser:
             "FunctionalOptions": MetadataType.FUNCTIONAL_OPTION,
             "ScheduledJobs": MetadataType.SCHEDULED_JOB,
             "EventSubscriptions": MetadataType.EVENT_SUBSCRIPTION,
+            "DefinedTypes": MetadataType.DEFINED_TYPE,
+            "CommonAttributes": MetadataType.COMMON_ATTRIBUTE,
+            "CommonPictures": MetadataType.COMMON_PICTURE,
+            "CommonCommands": MetadataType.COMMON_COMMAND,
+            "CommandGroups": MetadataType.COMMAND_GROUP,
             "HTTPServices": MetadataType.HTTP_SERVICE,
             "WebServices": MetadataType.WEB_SERVICE,
         }
@@ -268,7 +285,7 @@ class XmlParser:
 
         self.logger.debug(f"Parsing: {xml_file}")
 
-        tree = etree.parse(str(xml_file))
+        tree = etree.parse(str(xml_file), _SECURE_PARSER)
         root = tree.getroot()
 
         # Calculate file hash
@@ -294,6 +311,28 @@ class XmlParser:
         register_records = self._parse_register_records(root)
         posting = self._get_bool(root, ".//Posting", False)
 
+        # Parse type-specific fields
+        event_source: list[str] = []
+        event_handler: str = ""
+        method_name: str = ""
+        type_constituents: list[str] = []
+        auto_use: str = ""
+        applied_objects: list[str] = []
+
+        if metadata_type == MetadataType.EVENT_SUBSCRIPTION:
+            event_source = self._parse_event_subscription_sources(root)
+            event_handler = self._parse_event_subscription_handler(root)
+
+        elif metadata_type == MetadataType.SCHEDULED_JOB:
+            method_name = self._get_text(root, ".//MethodName", "")
+
+        elif metadata_type == MetadataType.DEFINED_TYPE:
+            type_constituents = self._parse_defined_type_constituents(root)
+
+        elif metadata_type == MetadataType.COMMON_ATTRIBUTE:
+            auto_use = self._get_text(root, ".//AutoUse", "")
+            applied_objects = self._parse_common_attribute_content(root)
+
         return MetadataObject(
             uuid=uuid,
             name=object_name,
@@ -312,6 +351,12 @@ class XmlParser:
             register_records=register_records,
             posting=posting,
             file_hash=file_hash,
+            event_source=event_source,
+            event_handler=event_handler,
+            method_name=method_name,
+            type_constituents=type_constituents,
+            auto_use=auto_use,
+            applied_objects=applied_objects,
         )
 
     def parse_subsystem(
@@ -341,7 +386,7 @@ class XmlParser:
         if not xml_file.exists():
             return Subsystem(name=subsystem_name, parent=parent)
 
-        tree = etree.parse(str(xml_file))
+        tree = etree.parse(str(xml_file), _SECURE_PARSER)
         root = tree.getroot()
 
         synonym = self._get_localized_string(root, ".//Synonym")
@@ -397,6 +442,8 @@ class XmlParser:
             MetadataType.COMMON_TEMPLATE: "CommonTemplates",
             MetadataType.SESSION_PARAMETER: "SessionParameters",
             MetadataType.FUNCTIONAL_OPTION: "FunctionalOptions",
+            MetadataType.DEFINED_TYPE: "DefinedTypes",
+            MetadataType.COMMON_ATTRIBUTE: "CommonAttributes",
             MetadataType.SCHEDULED_JOB: "ScheduledJobs",
             MetadataType.EVENT_SUBSCRIPTION: "EventSubscriptions",
             MetadataType.HTTP_SERVICE: "HTTPServices",
@@ -774,6 +821,34 @@ class XmlParser:
 
         return modules
 
+    def _parse_types_all(self, elem: etree._Element) -> list[str]:
+        """Parse ALL type entries from a composite type description.
+
+        Collects every ``<v8:Type>`` child (Configurator export) or falls back
+        to the single ``<Type>`` text (legacy format).
+
+        Returns:
+            List of type strings (may be empty).
+        """
+        type_elem = self._find_element_by_local_name(elem, "Type")
+        if type_elem is None:
+            return []
+
+        # Configurator export: multiple <v8:Type> children
+        v8_types = self._find_elements_by_local_name(type_elem, "Type")
+        if v8_types:
+            results: list[str] = []
+            for v8t in v8_types:
+                if v8t.text:
+                    results.append(v8t.text.strip())
+            return results
+
+        # Legacy: single text content
+        if type_elem.text and type_elem.text.strip():
+            return [type_elem.text.strip()]
+
+        return []
+
     def _parse_type(self, elem: etree._Element) -> str:
         """
         Parse type description from element.
@@ -875,3 +950,71 @@ class XmlParser:
                     records.append(child.text.strip())
 
         return records
+
+    # ── EventSubscription parsing ─────────────────────────────────────────
+
+    def _parse_event_subscription_sources(self, root: etree._Element) -> list[str]:
+        """Parse event subscription source objects.
+
+        Supports:
+        1. Configurator export: <Source><v8:Type>...</v8:Type></Source>
+        2. Legacy: <Source><Type>...</Type></Source> or <Source>text</Source>
+        """
+        source_elem = self._find_element_by_local_name(root, "Source")
+        if source_elem is None:
+            return []
+
+        # Try collecting v8:Type children (composite source with multiple types)
+        type_elem = self._find_element_by_local_name(source_elem, "Type")
+        if type_elem is not None:
+            v8_types = self._find_elements_by_local_name(type_elem, "Type")
+            if v8_types:
+                return [t.text.strip() for t in v8_types if t.text]
+            # Single text in <Type>
+            if type_elem.text and type_elem.text.strip():
+                return [type_elem.text.strip()]
+
+        # Legacy: direct text in <Source>
+        if source_elem.text and source_elem.text.strip():
+            return [source_elem.text.strip()]
+
+        return []
+
+    def _parse_event_subscription_handler(self, root: etree._Element) -> str:
+        """Parse event subscription handler reference.
+
+        Returns string like "CommonModule.МодульОбработки.ПриЗаписи" or "".
+        """
+        return self._get_text(root, ".//Handler", "")
+
+    # ── DefinedType parsing ───────────────────────────────────────────────
+
+    def _parse_defined_type_constituents(self, root: etree._Element) -> list[str]:
+        """Parse constituent types from a DefinedType XML.
+
+        Looks for <Type> element with multiple <v8:Type> children.
+        """
+        # DefinedType stores its constituent types inside a <Type> element
+        # in Properties (Configurator export) or directly (legacy)
+        props = self._find_element_by_local_name(root, "Properties")
+        source = props if props is not None else root
+        return self._parse_types_all(source)
+
+    # ── CommonAttribute parsing ───────────────────────────────────────────
+
+    def _parse_common_attribute_content(self, root: etree._Element) -> list[str]:
+        """Parse objects to which a CommonAttribute applies.
+
+        Configurator export: <Content><xr:Item>Catalog.Номенклатура</xr:Item></Content>
+        Legacy: <Content><item>Catalog.Номенклатура</item></Content>
+        """
+        results: list[str] = []
+        content_elem = self._find_element_by_local_name(root, "Content")
+        if content_elem is None:
+            return results
+
+        for child in content_elem:
+            local_name = etree.QName(child).localname.lower()
+            if local_name == "item" and child.text:
+                results.append(child.text.strip())
+        return results

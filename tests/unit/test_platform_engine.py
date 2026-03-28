@@ -84,13 +84,17 @@ class TestPlatformEngine:
         """Test getting type methods."""
         t = engine.get_type("ТаблицаЗначений")
         assert t is not None
-        assert len(t.methods) > 0
+        assert len(t.methods) >= 5
 
         # Check for common methods
         method_names = [m.name for m in t.methods]
         assert "Добавить" in method_names
         assert "Удалить" in method_names
         assert "Найти" in method_names
+
+        # Verify method has proper structure
+        add_method = next(m for m in t.methods if m.name == "Добавить")
+        assert add_method.name_en != ""
 
     @pytest.mark.asyncio
     async def test_get_type_properties(self, engine):
@@ -153,18 +157,30 @@ class TestPlatformEngine:
         """Test getting all methods."""
         methods = engine.get_all_methods()
         assert len(methods) > 50  # Should have many methods
+        # Each method should have name and name_en
+        for m in methods[:10]:  # Spot check first 10
+            assert m.name != ""
+            assert m.name_en != ""
 
     @pytest.mark.asyncio
     async def test_get_all_types(self, engine):
         """Test getting all types."""
         types = engine.get_all_types()
         assert len(types) > 5  # Should have multiple types
+        # Verify known types are present
+        type_names = [t.name for t in types]
+        assert "Массив" in type_names
+        assert "ТаблицаЗначений" in type_names
 
     @pytest.mark.asyncio
     async def test_get_all_events(self, engine):
         """Test getting all events."""
         events = engine.get_all_events()
         assert len(events) > 10  # Should have many events
+        # Verify known events are present
+        event_names = [e.name for e in events]
+        assert "ПередЗаписью" in event_names
+        assert "ОбработкаПроведения" in event_names
 
     @pytest.mark.asyncio
     async def test_get_global_context_sections(self, engine):

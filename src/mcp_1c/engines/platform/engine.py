@@ -6,6 +6,8 @@ Provides access to 1C:Enterprise 8.3 platform API documentation.
 
 import json
 import logging
+import re
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +26,9 @@ from ...domain.platform import (
 
 logger = logging.getLogger(__name__)
 
+_TOKEN_SPLIT_RE = re.compile(r"[\s.,;:()\[\]{}/\\|]+")
+_MIN_TOKEN_LEN = 2
+
 
 class PlatformEngine:
     """Engine for accessing platform knowledge base."""
@@ -33,6 +38,7 @@ class PlatformEngine:
         self._knowledge_base: PlatformKnowledgeBase | None = None
         self._data_dir = Path(__file__).parent / "data"
         self._loaded = False
+        self._search_index: dict[str, set[str]] = defaultdict(set)
 
     async def initialize(self) -> None:
         """Load the knowledge base from JSON files."""
@@ -50,6 +56,7 @@ class PlatformEngine:
                 types=types,
                 events=events,
             )
+            self._build_search_index()
             self._loaded = True
             logger.info("Platform knowledge base loaded successfully")
         except Exception as e:
@@ -210,6 +217,116 @@ class PlatformEngine:
             writable=data.get("writable", False),
         )
 
+    def _build_search_index(self) -> None:
+        """Build inverted index for fast text search across methods, types, and events."""
+        assert self._knowledge_base is not None
+        self._search_index.clear()
+
+        # Index global context methods
+        for method in self._knowledge_base.global_context.all_methods:
+            ref = f"method:{method.name}"
+            for token in self._tokenize(method.name):
+                self._search_index[token].add(ref)
+            if method.name_en:
+                for token in self._tokenize(method.name_en):
+                    self._search_index[token].add(ref)
+            if method.description:
+                for token in self._tokenize(method.description):
+                    self._search_index[token].add(ref)
+            for kw in method.keywords:
+                for token in self._tokenize(kw):
+                    self._search_index[token].add(ref)
+
+        # Index types
+        for platform_type in self._knowledge_base.types:
+            ref = f"type:{platform_type.name}"
+            for token in self._tokenize(platform_type.name):
+                self._search_index[token].add(ref)
+            if platform_type.name_en:
+                for token in self._tokenize(platform_type.name_en):
+                    self._search_index[token].add(ref)
+            if platform_type.description:
+                for token in self._tokenize(platform_type.description):
+                    self._search_index[token].add(ref)
+            for kw in platform_type.keywords:
+                for token in self._tokenize(kw):
+                    self._search_index[token].add(ref)
+
+        # Index events
+        for event in self._knowledge_base.events:
+            ref = f"event:{event.name}"
+            for token in self._tokenize(event.name):
+                self._search_index[token].add(ref)
+            if event.name_en:
+                for token in self._tokenize(event.name_en):
+                    self._search_index[token].add(ref)
+            if event.description:
+                for token in self._tokenize(event.description):
+                    self._search_index[token].add(ref)
+            for ot in event.object_types:
+                for token in self._tokenize(ot):
+                    self._search_index[token].add(ref)
+
+        total_tokens = len(self._search_index)
+        logger.debug(f"Search index built with {total_tokens} unique tokens")
+
+    @staticmethod
+    def _tokenize(text: str) -> list[str]:
+        """Split text into lowercase tokens for indexing.
+
+        Args:
+            text: Text to tokenize
+
+        Returns:
+            List of lowercase tokens with length >= 2
+        """
+        return [
+            w.lower()
+            for w in _TOKEN_SPLIT_RE.split(text)
+            if len(w) >= _MIN_TOKEN_LEN
+        ]
+
+    def _search_index_lookup(
+        self,
+        query: str,
+        category: str | None = None,
+    ) -> set[str]:
+        """Look up matching refs from the inverted index.
+
+        Tokenizes the query and intersects results for all tokens.
+        Each token matches any indexed token that contains it as a substring.
+
+        Args:
+            query: Search query
+            category: Optional category filter ("method", "type", or "event")
+
+        Returns:
+            Set of matching references like "method:Name", "type:Name", etc.
+        """
+        tokens = self._tokenize(query)
+        if not tokens:
+            return set()
+
+        candidates: set[str] | None = None
+        for token in tokens:
+            matches: set[str] = set()
+            for indexed_token, refs in self._search_index.items():
+                if token in indexed_token:
+                    matches |= refs
+            if candidates is None:
+                candidates = matches
+            else:
+                candidates &= matches
+
+        if candidates is None:
+            return set()
+
+        if category:
+            prefix = f"{category}:"
+            candidates = {r for r in candidates if r.startswith(prefix)}
+
+        return candidates
+
     def _ensure_loaded(self) -> None:
         """Ensure knowledge base is loaded."""
         if not self._loaded or self._knowledge_base is None:
@@ -224,10 +341,18 @@ class PlatformEngine:
         return self._knowledge_base.global_context.get_method(name)
 
     def search_methods(self, query: str) -> list[PlatformMethod]:
-        """Search global context methods."""
+        """Search global context methods using inverted index."""
         self._ensure_loaded()
         assert self._knowledge_base is not None
-        return self._knowledge_base.global_context.search_methods(query)
+        refs = self._search_index_lookup(query, category="method")
+        if not refs:
+            return []
+        # Extract names from refs and look up method objects
+        method_names = {r.split(":", 1)[1].lower() for r in refs}
+        return [
+            m for m in self._knowledge_base.global_context.all_methods
+            if m.name.lower() in method_names
+        ]
 
     def get_type(self, name: str) -> PlatformType | None:
         """Get type by name."""
@@ -236,10 +361,17 @@ class PlatformEngine:
         return self._knowledge_base.get_type(name)
 
     def search_types(self, query: str) -> list[PlatformType]:
-        """Search types."""
+        """Search types using inverted index."""
         self._ensure_loaded()
         assert self._knowledge_base is not None
-        return self._knowledge_base.search_types(query)
+        refs = self._search_index_lookup(query, category="type")
+        if not refs:
+            return []
+        type_names = {r.split(":", 1)[1].lower() for r in refs}
+        return [
+            t for t in self._knowledge_base.types
+            if t.name.lower() in type_names
+        ]
 
     def get_event(self, name: str) -> ObjectEvent | None:
         """Get event by name."""
@@ -248,10 +380,17 @@ class PlatformEngine:
         return self._knowledge_base.get_event(name)
 
     def search_events(self, query: str) -> list[ObjectEvent]:
-        """Search events."""
+        """Search events using inverted index."""
         self._ensure_loaded()
         assert self._knowledge_base is not None
-        return self._knowledge_base.search_events(query)
+        refs = self._search_index_lookup(query, category="event")
+        if not refs:
+            return []
+        event_names = {r.split(":", 1)[1].lower() for r in refs}
+        return [
+            e for e in self._knowledge_base.events
+            if e.name.lower() in event_names
+        ]
 
     def get_events_for_object(self, object_type: str) -> list[ObjectEvent]:
         """Get events for a specific object type."""

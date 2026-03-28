@@ -5,12 +5,19 @@ Reads .bsl files with proper encoding detection.
 """
 
 from pathlib import Path
+
 import aiofiles
 
 from mcp_1c.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+try:
+    from charset_normalizer import from_bytes as _detect_from_bytes
+
+    _HAS_CHARSET_NORMALIZER = True
+except ImportError:
+    _HAS_CHARSET_NORMALIZER = False
 
 # Common encodings for 1C files
 ENCODINGS = ["utf-8-sig", "utf-8", "cp1251", "cp866"]
@@ -134,6 +141,9 @@ class BslReader:
         """
         Detect file encoding.
 
+        Uses charset-normalizer when available for more accurate detection,
+        falling back to sequential encoding trial.
+
         Args:
             path: Path to file
 
@@ -141,18 +151,25 @@ class BslReader:
             Detected encoding name
         """
         with open(path, "rb") as f:
-            raw = f.read(1024)
+            raw = f.read(4096)
 
-        # Check for BOM
+        # Check for BOM first
         if raw.startswith(b"\xef\xbb\xbf"):
             return "utf-8-sig"
 
-        # Try to decode with each encoding
+        # Try charset-normalizer if available (faster and more accurate)
+        if _HAS_CHARSET_NORMALIZER:
+            result = _detect_from_bytes(raw)
+            best = result.best()
+            if best and best.encoding:
+                return best.encoding
+
+        # Fallback to sequential encoding trial
         for encoding in ENCODINGS:
             try:
                 raw.decode(encoding)
                 return encoding
-            except UnicodeDecodeError:
+            except (UnicodeDecodeError, LookupError):
                 continue
 
         return "utf-8"

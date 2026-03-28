@@ -4,6 +4,7 @@ MCP Server implementation.
 Provides the core MCP server with tool registration and handling.
 """
 
+import signal
 from typing import Any, Sequence
 
 from mcp.server import Server
@@ -103,6 +104,20 @@ def create_server() -> tuple[Server, ToolRegistry, PromptRegistry]:
     return server, registry, prompt_registry
 
 
+async def shutdown_engines() -> None:
+    """Graceful shutdown: close metadata engine connections and file watcher."""
+    from mcp_1c.engines.metadata import MetadataEngine
+
+    logger.info("Shutting down MCP server engines...")
+    try:
+        engine = MetadataEngine.get_instance()
+        if engine.is_initialized:
+            await engine.shutdown()
+    except Exception as e:
+        logger.warning(f"Error closing metadata engine: {e}")
+    logger.info("Shutdown complete")
+
+
 async def run_server(
     server: Server,
     registry: ToolRegistry | None = None,
@@ -116,15 +131,37 @@ async def run_server(
         registry: Optional ToolRegistry for initialization
         prompt_registry: Optional PromptRegistry (unused, for API consistency)
     """
+    import asyncio
+
     logger.info("Starting stdio transport...")
 
     # Initialize async components
     if registry:
         await registry.initialize()
 
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(
-            read_stream,
-            write_stream,
-            server.create_initialization_options(),
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(
+            sig,
+            lambda s=sig: asyncio.create_task(_handle_signal(s)),
         )
+
+    try:
+        async with stdio_server() as (read_stream, write_stream):
+            await server.run(
+                read_stream,
+                write_stream,
+                server.create_initialization_options(),
+            )
+    finally:
+        await shutdown_engines()
+
+
+async def _handle_signal(sig: signal.Signals) -> None:
+    """Handle OS signal for graceful shutdown.
+
+    Args:
+        sig: The signal received
+    """
+    logger.info(f"Received signal {sig.name}, initiating shutdown...")
+    await shutdown_engines()

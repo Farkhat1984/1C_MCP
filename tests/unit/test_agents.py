@@ -47,8 +47,8 @@ class TestExploreAgent:
         assert len(messages) == 1
         content = messages[0].content.text
         assert "C:/1C/Configuration" in content
-        assert "metadata.init" in content
-        assert "metadata.tree" in content
+        assert "metadata-init" in content
+        assert "metadata-tree" in content
 
     @pytest.mark.asyncio
     async def test_generate_messages_with_focus(self) -> None:
@@ -94,7 +94,7 @@ class TestImplementAgent:
         assert len(messages) == 1
         content = messages[0].content.text
         assert "контрагента по ИНН" in content
-        assert "generate.query" in content or "generate.handler" in content
+        assert "generate-query" in content or "generate-handler" in content
 
     @pytest.mark.asyncio
     async def test_generate_messages_with_object(self) -> None:
@@ -140,7 +140,7 @@ class TestDebugAgent:
         assert len(messages) == 1
         content = messages[0].content.text
         assert "не проводится" in content
-        assert "code.validate" in content
+        assert "code-validate" in content
 
     @pytest.mark.asyncio
     async def test_generate_messages_with_error(self) -> None:
@@ -186,7 +186,7 @@ class TestConfigureAgent:
         assert len(messages) == 1
         content = messages[0].content.text
         assert "Услуга" in content
-        assert "config.options" in content or "metadata.search" in content
+        assert "config-options" in content or "metadata-search" in content
 
     @pytest.mark.asyncio
     async def test_generate_messages_with_approach(self) -> None:

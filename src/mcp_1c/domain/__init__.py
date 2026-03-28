@@ -66,6 +66,12 @@ from mcp_1c.domain.mxl import (
     TemplateParameter,
 )
 
+from mcp_1c.domain.embedding import (
+    EmbeddingDocument,
+    EmbeddingStats,
+    SearchResult,
+)
+
 __all__ = [
     # Metadata models
     "MetadataType",
@@ -125,4 +131,8 @@ __all__ = [
     "MxlParseResult",
     "FillCodeGenerationOptions",
     "GeneratedFillCode",
+    # Embedding models (Phase 6)
+    "EmbeddingDocument",
+    "EmbeddingStats",
+    "SearchResult",
 ]

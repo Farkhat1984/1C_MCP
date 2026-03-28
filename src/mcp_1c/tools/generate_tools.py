@@ -32,12 +32,13 @@ async def validate_generated_code(code: str) -> dict[str, Any]:
         suffix=".bsl",
         delete=False,
         encoding="utf-8-sig",
-    ) as f:
-        f.write(code)
-        temp_path = Path(f.name)
+    ) as tmp:
+        tmp.write(code)
+        tmp.flush()
+        tmp_path = Path(tmp.name)
 
     try:
-        result = await bsl_ls.validate_file(temp_path)
+        result = await bsl_ls.validate_file(tmp_path)
         return {
             "valid": result.valid,
             "error_count": result.error_count,
@@ -53,17 +54,13 @@ async def validate_generated_code(code: str) -> dict[str, Any]:
             ],
         }
     finally:
-        # Clean up temp file
-        try:
-            temp_path.unlink()
-        except Exception:
-            pass
+        tmp_path.unlink(missing_ok=True)
 
 
 class GenerateQueryTool(BaseTool):
     """Generate 1C query from template."""
 
-    name: ClassVar[str] = "generate.query"
+    name: ClassVar[str] = "generate-query"
     description: ClassVar[str] = """
 Generate 1C query code from a template.
 
@@ -135,7 +132,7 @@ Pass template_id and values dictionary with placeholder values.
 class GenerateHandlerTool(BaseTool):
     """Generate 1C event handler from template."""
 
-    name: ClassVar[str] = "generate.handler"
+    name: ClassVar[str] = "generate-handler"
     description: ClassVar[str] = """
 Generate 1C event handler code from a template.
 
@@ -202,7 +199,7 @@ Pass template_id and values dictionary with placeholder values.
 class GeneratePrintTool(BaseTool):
     """Generate 1C print form code from template."""
 
-    name: ClassVar[str] = "generate.print"
+    name: ClassVar[str] = "generate-print"
     description: ClassVar[str] = """
 Generate 1C print form code from a template.
 
@@ -262,7 +259,7 @@ Pass template_id and values dictionary.
 class GenerateMovementTool(BaseTool):
     """Generate 1C register movement code from template."""
 
-    name: ClassVar[str] = "generate.movement"
+    name: ClassVar[str] = "generate-movement"
     description: ClassVar[str] = """
 Generate 1C register movement code from a template.
 
@@ -326,7 +323,7 @@ Pass template_id and values dictionary.
 class GenerateApiTool(BaseTool):
     """Generate 1C API code from template."""
 
-    name: ClassVar[str] = "generate.api"
+    name: ClassVar[str] = "generate-api"
     description: ClassVar[str] = """
 Generate 1C API code from a template.
 
@@ -390,7 +387,7 @@ Pass template_id and values dictionary.
 class GenerateFormHandlerTool(BaseTool):
     """Generate 1C form handler code."""
 
-    name: ClassVar[str] = "generate.form_handler"
+    name: ClassVar[str] = "generate-form_handler"
     description: ClassVar[str] = """
 Generate 1C form handler code from a template.
 
@@ -447,7 +444,7 @@ Pass template_id and values dictionary.
 class GenerateSubscriptionTool(BaseTool):
     """Generate 1C event subscription handler."""
 
-    name: ClassVar[str] = "generate.subscription"
+    name: ClassVar[str] = "generate-subscription"
     description: ClassVar[str] = """
 Generate 1C event subscription handler code.
 
@@ -498,7 +495,7 @@ Pass values with: SubscriptionName, Sources, EventName, HandlerName, HandlerCode
 class GenerateScheduledJobTool(BaseTool):
     """Generate 1C scheduled job handler."""
 
-    name: ClassVar[str] = "generate.scheduled_job"
+    name: ClassVar[str] = "generate-scheduled_job"
     description: ClassVar[str] = """
 Generate 1C scheduled job handler code.
 

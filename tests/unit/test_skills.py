@@ -145,7 +145,7 @@ class TestMetadataSkill:
 
         assert len(messages) == 1
         assert "Документ.РеализацияТоваров" in messages[0].content.text
-        assert "metadata.get" in messages[0].content.text
+        assert "metadata-get" in messages[0].content.text
 
 
 class TestHandlerSkill:
@@ -177,7 +177,7 @@ class TestPrintSkill:
 
         assert len(messages) == 1
         assert "Документ.СчетНаОплату" in messages[0].content.text
-        assert "generate.print" in messages[0].content.text
+        assert "generate-print" in messages[0].content.text
 
 
 class TestUsagesSkill:
@@ -191,7 +191,7 @@ class TestUsagesSkill:
 
         assert len(messages) == 1
         assert "ЗаполнитьТабличнуюЧасть" in messages[0].content.text
-        assert "code.usages" in messages[0].content.text
+        assert "code-usages" in messages[0].content.text
 
 
 class TestValidateSkill:
@@ -205,7 +205,7 @@ class TestValidateSkill:
 
         assert len(messages) == 1
         assert "Документ.Реализация.МодульОбъекта" in messages[0].content.text
-        assert "code.validate" in messages[0].content.text
+        assert "code-validate" in messages[0].content.text
 
 
 class TestDepsSkill:
@@ -219,7 +219,7 @@ class TestDepsSkill:
 
         assert len(messages) == 1
         assert "ОбщийМодуль.ОбщегоНазначения" in messages[0].content.text
-        assert "code.dependencies" in messages[0].content.text
+        assert "code-dependencies" in messages[0].content.text
 
 
 class TestMovementSkill:
@@ -233,7 +233,7 @@ class TestMovementSkill:
 
         assert len(messages) == 1
         assert "Документ.ПоступлениеТоваров" in messages[0].content.text
-        assert "generate.movement" in messages[0].content.text
+        assert "generate-movement" in messages[0].content.text
 
 
 class TestFormatSkill:
@@ -247,7 +247,7 @@ class TestFormatSkill:
 
         assert len(messages) == 1
         assert "Документ.Заказ.МодульФормы" in messages[0].content.text
-        assert "code.format" in messages[0].content.text
+        assert "code-format" in messages[0].content.text
 
 
 class TestExplainSkill:
@@ -261,7 +261,7 @@ class TestExplainSkill:
 
         assert len(messages) == 1
         assert "ОбщийМодуль.РаботаСФайлами" in messages[0].content.text
-        assert "code.analyze" in messages[0].content.text
+        assert "code-analyze" in messages[0].content.text
 
     @pytest.mark.asyncio
     async def test_generate_messages_with_procedure(self) -> None:
