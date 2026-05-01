@@ -5,14 +5,14 @@ Represents 1C:Enterprise configuration metadata objects.
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class MetadataType(str, Enum):
+class MetadataType(StrEnum):
     """Types of 1C metadata objects."""
 
     # Basic objects
@@ -65,6 +65,36 @@ class MetadataType(str, Enum):
 
     # Configuration
     CONFIGURATION = "Configuration"
+
+    @classmethod
+    def parse(cls, value: str) -> "MetadataType":
+        """Resolve a user-supplied type string to a MetadataType.
+
+        Accepts both the canonical English enum value (e.g. ``"Catalog"``)
+        and Russian aliases in singular or plural (e.g. ``"Справочник"``,
+        ``"Справочники"``). This is the single entry point — tool layers
+        and engines must call ``MetadataType.parse`` rather than constructing
+        the enum directly, so all surface-area input goes through one
+        canonical resolution path.
+
+        Args:
+            value: User-supplied type string.
+
+        Returns:
+            Resolved MetadataType.
+
+        Raises:
+            ValueError: If the string matches neither the English enum
+                value nor a known Russian alias.
+        """
+        try:
+            return cls(value)
+        except ValueError:
+            pass
+        resolved = cls.from_russian(value)
+        if resolved is not None:
+            return resolved
+        raise ValueError(f"Unknown metadata type: {value!r}")
 
     @classmethod
     def from_russian(cls, name: str) -> "MetadataType | None":
@@ -197,7 +227,7 @@ class MetadataType(str, Enum):
         return singular_map.get(self, self.value)
 
 
-class ModuleType(str, Enum):
+class ModuleType(StrEnum):
     """Types of 1C modules."""
 
     OBJECT_MODULE = "ObjectModule"
@@ -391,6 +421,21 @@ class MetadataObject(BaseModel):
         description="When object was indexed",
     )
     file_hash: str = Field(default="", description="Hash of XML file")
+
+    # Source root identifier — Phase F3 multi-root indexing.
+    # ``"config"`` for objects from the main config root; ``"overlay:<name>"``
+    # for objects from a developer-supplied overlay directory (a separate
+    # tree of own CommonModules etc.). Default keeps every legacy cache
+    # entry valid: pre-Phase-F3 records have no ``source`` in their
+    # ``data_json``, Pydantic fills it in with ``"config"`` on load.
+    source: str = Field(
+        default="config",
+        description=(
+            "Indexing source root: 'config' for the main config tree, "
+            "'overlay:<name>' for developer overlays. Used by graph and "
+            "smart-tools to filter or label results by origin."
+        ),
+    )
 
     @property
     def full_name(self) -> str:

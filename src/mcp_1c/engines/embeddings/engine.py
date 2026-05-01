@@ -23,6 +23,7 @@ from mcp_1c.engines.embeddings.chunking import (
     prepare_metadata_text,
 )
 from mcp_1c.engines.embeddings.client import EmbeddingClient
+from mcp_1c.engines.embeddings.local_client import make_embedding_client
 from mcp_1c.engines.embeddings.storage import VectorStorage
 from mcp_1c.utils.logger import get_logger
 
@@ -52,7 +53,7 @@ class EmbeddingEngine:
         return cls._instance
 
     def __init__(self) -> None:
-        self._client: EmbeddingClient | None = None
+        self._client: Any = None  # EmbeddingClient | LocalEmbeddingClient
         self._storage: VectorStorage | None = None
         self._config: EmbeddingConfig | None = None
         self._initialized = False
@@ -74,10 +75,13 @@ class EmbeddingEngine:
             return
 
         self._config = config
-        self._client = EmbeddingClient(config)
-        self._storage = VectorStorage(db_path)
+        self._client = make_embedding_client(config)
+        self._storage = VectorStorage(db_path, dimension=config.dimension)
         await self._storage.init_tables()
         self._initialized = True
+        logger.info(
+            f"Embeddings ready: backend={config.backend} model={config.model} dim={config.dimension}"
+        )
         logger.info(
             f"Embedding engine initialized "
             f"(model={config.model}, max_concurrent={config.max_concurrent}, db={db_path})"
@@ -738,6 +742,27 @@ class EmbeddingEngine:
         self._ensure_initialized()
         assert self._storage is not None
         return await self._storage.get_stats()
+
+    async def invalidate_object(self, object_full_name: str) -> int:
+        """Drop all embedding chunks for a metadata object.
+
+        Called by the metadata watcher when an object is rewritten:
+        ``Catalog.Контрагенты`` will match every chunk id starting with
+        that prefix (modules, procedures, descriptions). Returns the
+        number of chunks deleted so callers can log/measure.
+
+        Idempotent. Does nothing if the engine isn't initialised — the
+        watcher hands off blindly and we don't want startup-order races
+        to crash invalidation.
+        """
+        if not self._initialized or self._storage is None:
+            return 0
+        prefix = object_full_name if object_full_name.endswith(".") else f"{object_full_name}."
+        try:
+            return await self._storage.delete_by_prefix(prefix)
+        except Exception as exc:
+            logger.warning(f"Failed to invalidate embeddings for {object_full_name}: {exc}")
+            return 0
 
     async def close(self) -> None:
         """Close all resources."""

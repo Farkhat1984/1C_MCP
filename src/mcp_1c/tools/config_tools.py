@@ -16,7 +16,7 @@ from typing import Any, ClassVar
 
 from mcp_1c.domain.metadata import MetadataType
 from mcp_1c.engines.metadata import MetadataEngine
-from mcp_1c.tools.base import BaseTool
+from mcp_1c.tools.base import BaseTool, ToolError
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +92,10 @@ class ConfigObjectsTool(BaseTool):
 
         metadata_type = _CONFIG_OBJECT_TYPES.get(obj_type)
         if metadata_type is None:
-            return {"error": f"Unknown config object type: '{obj_type}'"}
+            raise ToolError(
+                f"Unknown config object type: '{obj_type}'",
+                code="INVALID_TYPE",
+            )
 
         label = _CONFIG_TYPE_LABELS[obj_type]
         engine = self._engine
@@ -100,7 +103,10 @@ class ConfigObjectsTool(BaseTool):
         if name:
             obj = await engine.get_object(metadata_type, name)
             if not obj:
-                return {"error": f"{label} '{name}' not found"}
+                raise ToolError(
+                    f"{label} '{name}' not found",
+                    code="OBJECT_NOT_FOUND",
+                )
 
             result: dict[str, Any] = {
                 "name": obj.name,
@@ -181,7 +187,10 @@ class ConfigOptionsTool(BaseTool):
             # Get specific functional option
             obj = await engine.get_object(MetadataType.FUNCTIONAL_OPTION, name)
             if not obj:
-                return {"error": f"Functional option '{name}' not found"}
+                raise ToolError(
+                    f"Functional option '{name}' not found",
+                    code="OBJECT_NOT_FOUND",
+                )
 
             result: dict[str, Any] = {
                 "name": obj.name,
@@ -255,7 +264,10 @@ class ConfigConstantsTool(BaseTool):
             # Get specific constant
             obj = await engine.get_object(MetadataType.CONSTANT, name)
             if not obj:
-                return {"error": f"Constant '{name}' not found"}
+                raise ToolError(
+                    f"Constant '{name}' not found",
+                    code="OBJECT_NOT_FOUND",
+                )
 
             result: dict[str, Any] = {
                 "name": obj.name,
@@ -327,7 +339,10 @@ class ConfigScheduledJobsTool(BaseTool):
             # Get specific scheduled job
             obj = await engine.get_object(MetadataType.SCHEDULED_JOB, name)
             if not obj:
-                return {"error": f"Scheduled job '{name}' not found"}
+                raise ToolError(
+                    f"Scheduled job '{name}' not found",
+                    code="OBJECT_NOT_FOUND",
+                )
 
             result: dict[str, Any] = {
                 "name": obj.name,
@@ -398,7 +413,10 @@ class ConfigEventSubscriptionsTool(BaseTool):
             # Get specific event subscription
             obj = await engine.get_object(MetadataType.EVENT_SUBSCRIPTION, name)
             if not obj:
-                return {"error": f"Event subscription '{name}' not found"}
+                raise ToolError(
+                    f"Event subscription '{name}' not found",
+                    code="OBJECT_NOT_FOUND",
+                )
 
             return {
                 "name": obj.name,
@@ -476,7 +494,10 @@ class ConfigExchangesTool(BaseTool):
             # Get specific exchange plan
             obj = await engine.get_object(MetadataType.EXCHANGE_PLAN, name)
             if not obj:
-                return {"error": f"Exchange plan '{name}' not found"}
+                raise ToolError(
+                    f"Exchange plan '{name}' not found",
+                    code="OBJECT_NOT_FOUND",
+                )
 
             result: dict[str, Any] = {
                 "name": obj.name,
@@ -561,7 +582,10 @@ class ConfigHttpServicesTool(BaseTool):
             # Get specific HTTP service
             obj = await engine.get_object(MetadataType.HTTP_SERVICE, name)
             if not obj:
-                return {"error": f"HTTP service '{name}' not found"}
+                raise ToolError(
+                    f"HTTP service '{name}' not found",
+                    code="OBJECT_NOT_FOUND",
+                )
 
             result: dict[str, Any] = {
                 "name": obj.name,

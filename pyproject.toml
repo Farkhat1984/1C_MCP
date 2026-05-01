@@ -1,8 +1,8 @@
 [project]
 name = "mcp-1c"
-version = "0.1.0"
-description = "MCP Server for 1C:Enterprise platform - metadata analysis and code generation"
-authors = [{ name = "MCP-1C Team", email = "mcp-1c@example.com" }]
+version = "0.2.0"
+description = "MCP Server for 1C:Enterprise — metadata indexing, BSL analysis, code generation, semantic search and metadata knowledge graph"
+authors = [{ name = "Farkhat Faragj", email = "zfaragj@gmail.com" }]
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
@@ -34,6 +34,7 @@ dependencies = [
     "mcp>=1.0.0",
     "pydantic>=2.0.0",
     "aiosqlite>=0.19.0",
+    "sqlite-vec>=0.1.9",
     "watchfiles>=0.21.0",
     "lxml>=5.0.0",
     "aiofiles>=23.0.0",
@@ -42,14 +43,16 @@ dependencies = [
     "sse-starlette>=1.8.0",
     "charset-normalizer>=3.0.0",
     "aiohttp>=3.9.0",
+    "PyJWT>=2.8.0",
+    "PyYAML>=6.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/mcp-1c"
-Documentation = "https://github.com/your-org/mcp-1c#readme"
-Repository = "https://github.com/your-org/mcp-1c.git"
-Issues = "https://github.com/your-org/mcp-1c/issues"
-Changelog = "https://github.com/your-org/mcp-1c/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Farkhat1984/1C_MCP"
+Documentation = "https://github.com/Farkhat1984/1C_MCP#readme"
+Repository = "https://github.com/Farkhat1984/1C_MCP.git"
+Issues = "https://github.com/Farkhat1984/1C_MCP/issues"
+Changelog = "https://github.com/Farkhat1984/1C_MCP/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
@@ -59,11 +62,27 @@ dev = [
     "mypy>=1.8.0",
     "ruff>=0.2.0",
     "black>=24.0.0",
+    "hypothesis>=6.100.0",
+]
+local-embeddings = [
+    "sentence-transformers>=3.0.0",
+]
+observability = [
+    "prometheus-client>=0.20.0",
+    "opentelemetry-api>=1.24.0",
+    "opentelemetry-sdk>=1.24.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.24.0",
+]
+postgres = [
+    "asyncpg>=0.29",
+    "pgvector>=0.3",
+    "alembic>=1.13",
 ]
 
 [project.scripts]
 mcp-1c = "mcp_1c.__main__:main"
 mcp-1c-web = "mcp_1c.web:main"
+mcp-1c-install-bsl-ls = "mcp_1c.scripts.install_bsl_ls:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -90,6 +109,12 @@ select = [
 ]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+# Test stubs frequently take parameters they don't use (mock callbacks,
+# fixtures kept for symmetry). Allow ARG/SIM117 noise there — the
+# real signal we want from ruff is in production code.
+"tests/**/*.py" = ["ARG001", "ARG002", "ARG005", "SIM117"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
@@ -100,3 +125,8 @@ disallow_untyped_defs = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "lsp: tests requiring a real bsl-language-server jar (slow, gated)",
+    "qga: tests requiring the QGA (real ZUP) configuration dump on disk",
+    "postgres: tests requiring a live PostgreSQL with pgvector (gated by MCP_PG_DSN)",
+]

@@ -3,11 +3,21 @@ Type resolver for 1C metadata types.
 
 Converts between cfg: English prefixes, Russian type prefixes,
 and 1C query language table names.
+
+F4 parameterization: methods that depend on configuration conventions
+(presentation field, query-table language) accept an optional
+``profile: ConfigurationProfile`` argument. The legacy zero-arg form
+remains for backward-compat — callers without a workspace handle
+get the historical "typical-БСП-with-russian-names" behaviour.
 """
 
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mcp_1c.engines.profile import ConfigurationProfile
 
 # ── Reference type prefix → English canonical name ──────────────────────────
 # Own copy — do NOT import from knowledge_graph to avoid circular dependencies.
@@ -144,29 +154,71 @@ class TypeResolver:
         return f"{rus_prefix}.{obj_name}"
 
     @staticmethod
-    def to_russian_type_prefix(eng_type: str) -> str:
-        """Convert English metadata type to Russian query prefix.
+    def to_russian_type_prefix(
+        eng_type: str, profile: ConfigurationProfile | None = None
+    ) -> str:
+        """Convert English metadata type to a query-table prefix.
+
+        For ``profile.language == "ru"`` (default) returns the russian
+        prefix (``Справочник`` etc.); for ``en`` returns the English
+        canonical name unchanged so generated queries match
+        identifiers in EDT/international configurations.
+
+        Resolution order: explicit ``profile`` arg → active profile
+        bound via smart-context ContextVar → default "ru".
 
         Args:
             eng_type: "Catalog", "Document", etc.
-
-        Returns:
-            Russian prefix: "Справочник", "Документ", etc.
+            profile: Project profile; falls back to context var.
         """
+        if profile is None:
+            from mcp_1c.engines.smart.context import get_active_profile
+
+            profile = get_active_profile()
+        if profile is not None and profile.effective_language == "en":
+            return eng_type
         return _ENGLISH_TO_RUSSIAN_TABLE.get(eng_type, eng_type)
 
     @staticmethod
-    def get_presentation_field(type_str: str) -> str:
-        """Get the standard presentation field for a reference type.
+    def get_presentation_field(
+        type_str: str,
+        *,
+        profile: ConfigurationProfile | None = None,
+        object_full_name: str | None = None,
+    ) -> str:
+        """Get the presentation field for a reference type.
 
-        Catalogs use "Наименование", Documents use "Номер".
+        Three layers, in priority order:
+
+        1. **Per-object override** (``profile.naming.presentation_field_overrides``)
+           keyed by ``object_full_name`` (e.g. ``Catalog.Контрагенты``).
+           Highest precedence — wins over both type-defaults and the
+           catch-all "Наименование".
+        2. **Type defaults** (``Catalog`` → ``Наименование``,
+           ``Document`` → ``Номер``, …).
+        3. **Final fallback** — ``Наименование``.
+
+        Profile resolution: explicit arg → smart-context ContextVar →
+        no profile (defaults only).
 
         Args:
             type_str: Reference type string.
-
-        Returns:
-            Field name for human-readable presentation.
+            profile: Project profile; pass-through unused when ``None``.
+            object_full_name: Fully-qualified object name for the
+                override lookup. Optional — without it we still apply
+                type defaults.
         """
+        if profile is None:
+            from mcp_1c.engines.smart.context import get_active_profile
+
+            profile = get_active_profile()
+        # Per-object override has highest priority — even beats type defaults.
+        if profile is not None and object_full_name is not None:
+            override = profile.naming.presentation_field_overrides.get(
+                object_full_name
+            )
+            if override:
+                return override
         parsed = TypeResolver.parse_reference(type_str)
         if parsed is None:
             return "Наименование"

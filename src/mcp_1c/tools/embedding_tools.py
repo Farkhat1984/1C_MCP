@@ -59,15 +59,23 @@ class EmbeddingIndexTool(BaseTool):
 
         # Ensure engine is initialized
         if not self._embedding_engine.initialized:
-            config = get_config()
             embedding_config = EmbeddingConfig.from_env()
-            if not embedding_config.api_key:
+            if embedding_config.backend == "api" and not embedding_config.api_key:
                 raise ToolError(
-                    "Не задан API-ключ для эмбеддингов. "
-                    "Установите переменную окружения MCP_EMBEDDING_API_KEY.",
+                    "Backend 'api' выбран, но API-ключ не задан. "
+                    "Либо установите MCP_EMBEDDING_API_KEY, либо переключитесь "
+                    "на локальный backend: MCP_EMBEDDING_BACKEND=local "
+                    "(требует `pip install -e \".[local-embeddings]\"`).",
                     code="MISSING_API_KEY",
                 )
-            db_path = Path(config.cache.db_path).parent / ".mcp_1c_embeddings.db"
+            workspace = self._metadata_engine.workspace
+            if workspace is None:
+                raise ToolError(
+                    "Метаданные не инициализированы. Сначала вызови `metadata-init` с путём к конфигурации.",
+                    code="METADATA_NOT_INITIALIZED",
+                )
+            db_path = workspace.embeddings_db
+            db_path.parent.mkdir(parents=True, exist_ok=True)
             await self._embedding_engine.initialize(embedding_config, db_path)
 
         results: dict[str, dict[str, int]] = {}

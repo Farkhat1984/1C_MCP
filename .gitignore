@@ -97,6 +97,7 @@ cython_debug/
 *.db
 *.db-shm
 *.db-wal
+*.db.bak*
 *.sqlite
 *.sqlite3
 .mcp-1c-cache/

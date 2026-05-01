@@ -5,12 +5,11 @@ from typing import Any
 
 import pytest
 
-from mcp_1c.domain.code import DependencyGraph, CodeLocation
+from mcp_1c.domain.code import DependencyGraph
 from mcp_1c.domain.metadata import MetadataType
 from mcp_1c.engines.metadata.parser import XmlParser
 from mcp_1c.engines.mxl.parser import MxlParser
 from mcp_1c.tools.base import BaseTool, ToolError, parse_metadata_type
-
 
 # ---------------------------------------------------------------------------
 # parse_metadata_type
@@ -73,7 +72,7 @@ class _StubTool(BaseTool):
         "required": ["name", "type"],
     }
 
-    async def execute(self, arguments: dict[str, Any]) -> Any:
+    async def execute(self, arguments: dict[str, Any]) -> Any:  # noqa: ARG002
         return {"ok": True}
 
 
@@ -117,7 +116,7 @@ class TestBaseToolRequiredParams:
             description = "Always fails"
             input_schema: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
 
-            async def execute(self, arguments: dict[str, Any]) -> Any:
+            async def execute(self, arguments: dict[str, Any]) -> Any:  # noqa: ARG002
                 raise ToolError("something broke", code="BROKEN")
 
         tool = _FailTool()
@@ -284,6 +283,36 @@ class TestDependencyGraphCycles:
         assert "A" in graph.get_callees("B")
         assert "B" in graph.get_callers("A")
         assert "A" in graph.get_callers("B")
+
+    def test_deep_dag_does_not_overflow(self) -> None:
+        """A linear chain of 500 nodes with depth=500 must not overflow.
+
+        This guards against future regressions where someone removes the
+        ``_visited`` set assuming acyclic inputs are safe — Python's
+        default recursion limit is 1000 and stack frames here are small,
+        but the structure must remain iterative-friendly.
+        """
+        graph = DependencyGraph()
+        for i in range(500):
+            graph.add_node(f"N{i}", "procedure")
+        for i in range(499):
+            graph.add_edge(f"N{i}", f"N{i+1}", "calls")
+
+        deps = graph.get_dependencies("N0", depth=500)
+        assert deps["node"] == "N0"
+
+    def test_dense_graph_with_overlapping_paths(self) -> None:
+        """Diamond: A->B, A->C, B->D, C->D — D must not be re-walked."""
+        graph = DependencyGraph()
+        for n in ("A", "B", "C", "D"):
+            graph.add_node(n, "procedure")
+        graph.add_edge("A", "B", "calls")
+        graph.add_edge("A", "C", "calls")
+        graph.add_edge("B", "D", "calls")
+        graph.add_edge("C", "D", "calls")
+
+        deps = graph.get_dependencies("A", depth=10)
+        assert deps["node"] == "A"
 
 
 # ---------------------------------------------------------------------------

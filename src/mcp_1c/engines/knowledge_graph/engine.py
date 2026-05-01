@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import re
 from collections import deque
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 from mcp_1c.config import get_config
 from mcp_1c.domain.graph import (
@@ -22,6 +24,9 @@ from mcp_1c.domain.metadata import MetadataObject, MetadataType, Subsystem
 from mcp_1c.engines.knowledge_graph.storage import GraphStorage
 from mcp_1c.engines.metadata.engine import MetadataEngine
 from mcp_1c.utils.logger import get_logger
+
+if TYPE_CHECKING:
+    from mcp_1c.engines.code.engine import CodeEngine
 
 logger = get_logger(__name__)
 
@@ -218,11 +223,20 @@ class KnowledgeGraphEngine:
         db_path = config.cache.db_path
         await self._storage.init_tables(db_path)
 
-    async def build(self, metadata_engine: MetadataEngine) -> KnowledgeGraph:
+    async def build(
+        self,
+        metadata_engine: MetadataEngine,
+        *,
+        code_engine: CodeEngine | None = None,
+    ) -> KnowledgeGraph:
         """Build complete knowledge graph from all indexed metadata.
 
         Args:
             metadata_engine: Initialized MetadataEngine to query objects from.
+            code_engine: When supplied, also extracts code-level edges
+                (procedure ownership, calls, metadata references from
+                BSL). Optional so the metadata-only graph stays
+                buildable without a CodeEngine instance.
 
         Returns:
             Populated KnowledgeGraph.
@@ -273,6 +287,13 @@ class KnowledgeGraphEngine:
 
         # 3b. Post-processing: resolve DefinedType transitive references
         self._resolve_defined_type_transitive(graph)
+
+        # 3c. Code-level edges (Phase 1, opt-in)
+        if code_engine is not None:
+            await self._extract_code_edges(graph, all_objects, code_engine)
+
+        # 3d. Extension edges (Phase F2)
+        await self._extract_extension_edges(graph)
 
         # 4. Persist
         await self._ensure_storage()
@@ -822,3 +843,499 @@ class KnowledgeGraphEngine:
                 await self._add_subsystems_recursive(
                     graph, metadata_engine, parent=sub.name,
                 )
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Extension edges (Phase F2)
+    # ─────────────────────────────────────────────────────────────────────
+
+    async def _extract_extension_edges(self, graph: KnowledgeGraph) -> None:
+        """Add extensions as first-class citizens of the graph.
+
+        For every discovered extension, emit:
+
+        - ``Extension.<name>`` node — the extension itself.
+        - ``ExtensionObject.<ext>.<obj>`` node — each contributed object.
+        - ``EXTENSION_OWNS`` edge from extension to its objects.
+        - ``EXTENSION_ADOPTS`` / ``EXTENSION_REPLACES`` edge from the
+          extension-object to the corresponding main-config object node
+          (when one exists in the graph already).
+
+        Why edges from extension-object → main-object (not the other
+        way): impact analysis flows incoming. When a developer asks
+        "what depends on Catalog.Контрагенты?", the BFS walks incoming
+        edges; the extension shows up as a depender of the main object
+        — which is exactly the question "is this object overridden?"
+
+        Best-effort: missing/malformed extensions are logged at debug
+        and skipped. Extensions are optional; failure to enumerate them
+        must not abort graph build.
+        """
+        from mcp_1c.engines.extensions import ExtensionEngine
+
+        ext_engine = ExtensionEngine.get_instance()
+        if ext_engine._main_path is None:  # noqa: SLF001
+            # Engine wasn't attached to a config path — nothing to scan.
+            return
+
+        try:
+            names = await ext_engine.list_extensions()
+        except Exception as exc:
+            logger.debug(f"Extension enumeration skipped: {exc}")
+            return
+
+        from mcp_1c.domain.extension import AdoptionMode
+
+        for ext_name in names:
+            try:
+                ext = await ext_engine.get(ext_name)
+            except Exception as exc:
+                logger.debug(f"Skipping extension {ext_name}: {exc}")
+                continue
+
+            ext_node_id = f"Extension.{ext.name}"
+            graph.add_node(
+                GraphNode(
+                    id=ext_node_id,
+                    node_type="Extension",
+                    name=ext.name,
+                    synonym="",
+                    metadata={
+                        "purpose": ext.purpose.value if hasattr(ext.purpose, "value") else str(ext.purpose),
+                        "namespace": ext.namespace,
+                        "target": ext.target_configuration,
+                        "safe_mode": ext.safe_mode,
+                    },
+                )
+            )
+
+            for obj in ext.objects:
+                obj_node_id = (
+                    f"ExtensionObject.{ext.name}.{obj.metadata_type}.{obj.name}"
+                )
+                graph.add_node(
+                    GraphNode(
+                        id=obj_node_id,
+                        node_type="ExtensionObject",
+                        name=obj.name,
+                        synonym="",
+                        metadata={
+                            "extension": ext.name,
+                            "metadata_type": obj.metadata_type,
+                            "mode": obj.mode.value
+                            if hasattr(obj.mode, "value")
+                            else str(obj.mode),
+                            "parent": obj.parent,
+                        },
+                    )
+                )
+                # Extension owns this object regardless of mode.
+                graph.add_edge(
+                    GraphEdge(
+                        source=ext_node_id,
+                        target=obj_node_id,
+                        relationship=RelationshipType.EXTENSION_OWNS,
+                        label=f"'{ext.name}' содержит '{obj.name}'",
+                    )
+                )
+
+                # For Adopted/Replaced — link to the main-config target.
+                # ``parent`` carries the main-config object name when set,
+                # otherwise the contributed name itself is the original.
+                if obj.mode in (AdoptionMode.ADOPTED, AdoptionMode.REPLACED):
+                    target_name = obj.parent or obj.name
+                    target_node_id = f"{obj.metadata_type}.{target_name}"
+                    if target_node_id in graph.nodes:
+                        rel = (
+                            RelationshipType.EXTENSION_ADOPTS
+                            if obj.mode == AdoptionMode.ADOPTED
+                            else RelationshipType.EXTENSION_REPLACES
+                        )
+                        graph.add_edge(
+                            GraphEdge(
+                                source=obj_node_id,
+                                target=target_node_id,
+                                relationship=rel,
+                                label=(
+                                    f"расширение '{ext.name}' "
+                                    f"{'заимствует' if obj.mode == AdoptionMode.ADOPTED else 'замещает'} "
+                                    f"'{obj.metadata_type}.{target_name}'"
+                                ),
+                            )
+                        )
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Code-level edges (Phase 1)
+    # ─────────────────────────────────────────────────────────────────────
+
+    async def _extract_code_edges(
+        self,
+        graph: KnowledgeGraph,
+        all_objects: list[MetadataObject],
+        code_engine: CodeEngine,
+    ) -> None:
+        """Walk every BSL module, emit procedure nodes and code edges.
+
+        Three edge kinds are produced:
+
+        - ``PROCEDURE_OWNERSHIP`` — owner metadata object → procedure.
+        - ``PROCEDURE_CALL`` — caller procedure → callee procedure.
+          Cross-module resolution upgrades through bsl-language-server
+          when ``code_engine.find_definition_lsp`` is reachable; falls
+          back to name-matching (with drop-on-ambiguity) otherwise.
+        - ``CODE_METADATA_REFERENCE`` — procedure → metadata object
+          (e.g. ``Справочники.Контрагенты`` lookups).
+        - ``CODE_QUERY_REFERENCE`` — procedure → metadata table from
+          the FROM-clause of in-procedure queries.
+
+        We still use the regex-based ``ExtendedBslModule`` extraction
+        for the call-site list (LSP doesn't enumerate calls cheaply).
+        For each *unresolved* same-module / global call we then try
+        LSP ``textDocument/definition`` from the caller's position —
+        that gives precise resolution at acceptable cost (one LSP call
+        per ambiguous name, cached by call site).
+        """
+        from mcp_1c.engines.code.parser import BslParser
+
+        parser = BslParser()
+        proc_node_ids: dict[tuple[str, str], str] = {}
+        # path-resolved → ordered procs in that file, for mapping LSP
+        # ``Location.range.start.line`` back to a Procedure node.
+        procs_by_path: dict[str, list[tuple[int, int, str]]] = {}
+        # Per-extraction memoisation: (file, line, col, name) → callee id.
+        lsp_resolution_cache: dict[tuple[str, int, int, str], str | None] = {}
+        # First pass: emit procedure nodes so we can resolve calls.
+        for obj in all_objects:
+            for module in obj.modules:
+                if not module.exists or not module.path.exists():
+                    continue
+                try:
+                    extended = await parser.parse_file_extended(module.path)
+                except Exception as exc:
+                    logger.debug(
+                        f"Skipping {module.path}: parse error: {exc}"
+                    )
+                    continue
+
+                file_key = str(module.path.resolve())
+                for proc in extended.procedures:
+                    proc_id = self._procedure_node_id(
+                        obj, module.module_type.value, proc.name
+                    )
+                    proc_node_ids[(proc.name.lower(), obj.full_name)] = proc_id
+                    procs_by_path.setdefault(file_key, []).append(
+                        (proc.start_line, proc.end_line, proc_id)
+                    )
+                    graph.add_node(
+                        GraphNode(
+                            id=proc_id,
+                            node_type="Procedure",
+                            name=proc.name,
+                            synonym="",
+                            metadata={
+                                "owner": obj.full_name,
+                                "module_type": module.module_type.value,
+                                "is_function": proc.is_function,
+                                "is_export": proc.is_export,
+                                "start_line": proc.start_line,
+                            },
+                        )
+                    )
+                    graph.add_edge(
+                        GraphEdge(
+                            source=obj.full_name,
+                            target=proc_id,
+                            relationship=RelationshipType.PROCEDURE_OWNERSHIP,
+                            label=f"'{obj.name}' содержит '{proc.name}'",
+                        )
+                    )
+
+                # Build a quick lookup of declared procedure names per module
+                # for resolving same-module calls deterministically.
+                local_procs = {p.name.lower() for p in extended.procedures}
+
+                for call in extended.method_calls:
+                    if not call.containing_procedure:
+                        continue
+                    caller_id = proc_node_ids.get(
+                        (call.containing_procedure.lower(), obj.full_name)
+                    )
+                    if caller_id is None:
+                        continue
+                    callee_lower = call.name.lower()
+                    resolution = "name_match"
+                    # Same-module callee — deterministic, prefer it
+                    # over LSP (saves one round-trip per local call).
+                    if callee_lower in local_procs:
+                        callee_id = proc_node_ids.get(
+                            (callee_lower, obj.full_name)
+                        )
+                    else:
+                        callee_id = self._resolve_global_procedure(
+                            callee_lower, proc_node_ids
+                        )
+                        # Ambiguous (None from name resolver) → ask LSP.
+                        if callee_id is None:
+                            callee_id = await self._resolve_via_lsp(
+                                code_engine,
+                                module.path,
+                                call.line,
+                                call.column,
+                                call.name,
+                                procs_by_path,
+                                lsp_resolution_cache,
+                            )
+                            if callee_id is not None:
+                                resolution = "lsp_definition"
+                    if callee_id is None or callee_id == caller_id:
+                        continue
+                    graph.add_edge(
+                        GraphEdge(
+                            source=caller_id,
+                            target=callee_id,
+                            relationship=RelationshipType.PROCEDURE_CALL,
+                            label=f"вызов {call.name}",
+                            metadata={
+                                "line": call.line,
+                                "resolution": resolution,
+                            },
+                        )
+                    )
+
+                for ref in extended.metadata_references:
+                    if not ref.containing_procedure:
+                        continue
+                    caller_id = proc_node_ids.get(
+                        (ref.containing_procedure.lower(), obj.full_name)
+                    )
+                    if caller_id is None:
+                        continue
+                    target_id = self._resolve_metadata_reference(
+                        ref.reference_type.value, ref.object_name, graph
+                    )
+                    if target_id is None:
+                        continue
+                    graph.add_edge(
+                        GraphEdge(
+                            source=caller_id,
+                            target=target_id,
+                            relationship=RelationshipType.CODE_METADATA_REFERENCE,
+                            label=ref.full_name,
+                            metadata={
+                                "line": ref.line,
+                                "access_type": ref.access_type,
+                            },
+                        )
+                    )
+
+                for query in extended.queries:
+                    if not query.containing_procedure:
+                        continue
+                    caller_id = proc_node_ids.get(
+                        (query.containing_procedure.lower(), obj.full_name)
+                    )
+                    if caller_id is None:
+                        continue
+                    for table in query.tables:
+                        target_id = self._resolve_query_table(table, graph)
+                        if target_id is None:
+                            continue
+                        graph.add_edge(
+                            GraphEdge(
+                                source=caller_id,
+                                target=target_id,
+                                relationship=RelationshipType.CODE_QUERY_REFERENCE,
+                                label=table,
+                                metadata={"start_line": query.start_line},
+                            )
+                        )
+
+        logger.info(
+            f"Code edges: +{len(proc_node_ids)} procedure nodes, "
+            f"{sum(1 for e in graph.edges if e.relationship == RelationshipType.PROCEDURE_CALL)} calls"
+        )
+
+    @staticmethod
+    def _procedure_node_id(
+        obj: MetadataObject, module_type: str, proc_name: str
+    ) -> str:
+        return f"{obj.full_name}.{module_type}.{proc_name}"
+
+    @staticmethod
+    def _resolve_global_procedure(
+        callee_lower: str,
+        proc_node_ids: dict[tuple[str, str], str],
+    ) -> str | None:
+        """Find the unique procedure node for a callee name, if any.
+
+        Cross-module name resolution without semantic info is
+        ambiguous: two CommonModules can declare ``ВыполнитьЗапрос``
+        each. We only emit an edge when the name is globally unique;
+        ambiguous calls are dropped (a code-graph with false positives
+        is worse than one with false negatives — Phase 1 audit
+        finding).
+
+        With LSP available (Phase 1.5+), this is the *first* try; an
+        unresolved/ambiguous result triggers an LSP definition lookup
+        in the caller (see ``_resolve_via_lsp``).
+        """
+        matches = [
+            node_id for (name, _owner), node_id in proc_node_ids.items()
+            if name == callee_lower
+        ]
+        if len(matches) == 1:
+            return matches[0]
+        return None
+
+    @staticmethod
+    async def _resolve_via_lsp(
+        code_engine: CodeEngine,
+        caller_path: Path,
+        line: int,
+        column: int,
+        callee_name: str,
+        procs_by_path: dict[str, list[tuple[int, int, str]]],
+        cache: dict[tuple[str, int, int, str], str | None],
+    ) -> str | None:
+        """Resolve a call site to a procedure node via LSP definition.
+
+        Used as the second resolver after name-matching fails. Asks
+        bsl-language-server: "where is the symbol at (caller_path,
+        line, column)?". The returned ``Location[]`` is mapped back to
+        a procedure node by:
+        1. Resolving ``Location.uri`` to an absolute path.
+        2. Finding the procedure in ``procs_by_path[path]`` whose
+           ``[start_line, end_line]`` covers ``Location.range.start.line``.
+
+        Cached per call site to avoid re-asking LSP for repeated calls
+        of the same callee in the same caller (e.g. inside a loop).
+        Returns ``None`` when LSP is unreachable, returns nothing, or
+        the resolved location doesn't map to a known procedure node.
+        """
+        cache_key = (str(caller_path.resolve()), line, column, callee_name.lower())
+        if cache_key in cache:
+            return cache[cache_key]
+
+        result: str | None = None
+        try:
+            locations = await code_engine.find_definition_lsp(
+                caller_path, line=line, character=column
+            )
+        except Exception as exc:
+            logger.debug(f"LSP definition lookup failed: {exc}")
+            locations = None
+
+        if locations:
+            for loc in locations:
+                uri = loc.get("uri") or ""
+                if not isinstance(uri, str) or not uri.startswith("file://"):
+                    continue
+                target_path = _uri_to_path_str(uri)
+                if target_path is None:
+                    continue
+                rng = loc.get("range") or {}
+                start = (rng.get("start") or {}).get("line")
+                if not isinstance(start, int):
+                    continue
+                # LSP is 0-indexed; our procedure ranges are 1-indexed.
+                target_line = start + 1
+                for proc_start, proc_end, proc_id in procs_by_path.get(
+                    target_path, ()
+                ):
+                    if proc_start <= target_line <= proc_end:
+                        result = proc_id
+                        break
+                if result is not None:
+                    break
+
+        cache[cache_key] = result
+        return result
+
+    @staticmethod
+    def _resolve_metadata_reference(
+        ref_type: str, object_name: str, graph: KnowledgeGraph
+    ) -> str | None:
+        """Resolve ``Справочники.Х.Метод()`` to a metadata graph node id."""
+        candidate = f"{ref_type}.{object_name}"
+        if candidate in graph.nodes:
+            return candidate
+        return None
+
+    @staticmethod
+    def _resolve_query_table(
+        table: str, graph: KnowledgeGraph
+    ) -> str | None:
+        """Map a query FROM-clause token like ``Справочник.Контрагенты``
+        to a metadata node id like ``Catalog.Контрагенты``."""
+        if "." not in table:
+            return None
+        prefix, _, name = table.partition(".")
+        # Normalise the russian table prefix to canonical metadata type.
+        normalised = TYPE_PREFIX_MAP.get(prefix + "Ссылка") or _prefix_to_type(prefix)
+        if not normalised:
+            return None
+        candidate = f"{normalised}.{name}"
+        return candidate if candidate in graph.nodes else None
+
+    async def invalidate_node(self, node_id: str) -> None:
+        """Drop a node and every edge touching it.
+
+        Called by the metadata watcher when an object is rewritten —
+        the next ``build()`` will reconstruct the relevant subgraph.
+        Operates on the in-memory graph; the persisted snapshot stays
+        until the next save. This is consistent with the rest of the
+        invalidation hooks: they remove stale data, the next full
+        rebuild puts the truth back.
+        """
+        if self._graph is None:
+            return
+        if node_id in self._graph.nodes:
+            del self._graph.nodes[node_id]
+        self._graph.edges = [
+            e for e in self._graph.edges
+            if e.source != node_id and e.target != node_id
+        ]
+
+
+def _uri_to_path_str(uri: str) -> str | None:
+    """Convert an LSP ``file://`` URI to a resolved absolute path string.
+
+    Used by :meth:`KnowledgeGraphEngine._resolve_via_lsp` when mapping
+    an LSP ``Location`` back to a procedure node tracked in
+    ``procs_by_path``. Both keys are produced by ``Path.resolve()`` so
+    they compare exactly.
+    """
+    from urllib.parse import unquote, urlparse
+
+    parsed = urlparse(uri)
+    if parsed.scheme != "file":
+        return None
+    raw_path = unquote(parsed.path)
+    try:
+        return str(Path(raw_path).resolve())
+    except (OSError, ValueError):
+        return None
+
+
+def _prefix_to_type(prefix: str) -> str | None:
+    """Map a Russian-language table prefix to the English metadata type.
+
+    Used by :meth:`KnowledgeGraphEngine._resolve_query_table` for query
+    tokens that don't carry the ``Ссылка``/``Ref`` suffix (the
+    plain-table form, e.g. ``Справочник.Контрагенты``).
+    """
+    mapping = {
+        "Справочник": "Catalog",
+        "Документ": "Document",
+        "Перечисление": "Enum",
+        "ПланВидовХарактеристик": "ChartOfCharacteristicTypes",
+        "ПланСчетов": "ChartOfAccounts",
+        "ПланВидовРасчета": "ChartOfCalculationTypes",
+        "БизнесПроцесс": "BusinessProcess",
+        "Задача": "Task",
+        "ПланОбмена": "ExchangePlan",
+        "РегистрСведений": "InformationRegister",
+        "РегистрНакопления": "AccumulationRegister",
+        "РегистрБухгалтерии": "AccountingRegister",
+        "РегистрРасчета": "CalculationRegister",
+    }
+    return mapping.get(prefix)

@@ -4,16 +4,14 @@ Unit tests for MXL (SpreadsheetDocument) parser.
 Tests template parsing, parameter extraction, and code generation.
 """
 
-import pytest
 
 from mcp_1c.domain.mxl import (
     AreaType,
-    CellType,
     FillCodeGenerationOptions,
     MxlDocument,
     ParameterType,
 )
-from mcp_1c.engines.mxl import MxlParser, FillCodeGenerator, MxlEngine
+from mcp_1c.engines.mxl import FillCodeGenerator, MxlEngine, MxlParser
 
 
 class TestMxlParser:
@@ -158,7 +156,7 @@ class TestMxlParser:
                 </Area>
             </Areas>
         </SpreadsheetDocument>
-        """.encode("utf-8")
+        """.encode()
 
         result = self.parser.parse_content(xml_content)
 
@@ -613,7 +611,7 @@ class TestParameterExtraction:
                 </Row>
             </Rows>
         </SpreadsheetDocument>
-        """.encode("utf-8")
+        """.encode()
 
         result = self.parser.parse_content(xml_content)
 
@@ -670,3 +668,51 @@ class TestParameterExtraction:
         for param in path_params:
             assert param.data_path is not None
             assert "." in param.data_path
+
+
+class TestMxlEngineCacheBound:
+    """Verify the parse cache cannot grow without bound."""
+
+    def test_cache_evicts_oldest_at_capacity(self) -> None:
+        """Adding (max_size + 1) entries must evict the LRU entry."""
+        from mcp_1c.domain.mxl import MxlDocument
+        from mcp_1c.engines.mxl.engine import _LRUDict
+
+        cache = _LRUDict(max_size=3)
+        for i in range(4):
+            doc = MxlDocument(source_path=f"p{i}.mxl")
+            cache[f"p{i}.mxl"] = doc
+
+        assert len(cache) == 3
+        assert "p0.mxl" not in cache  # evicted
+        assert "p3.mxl" in cache
+
+    def test_cache_recency_on_get(self) -> None:
+        """Reading an entry refreshes it; eviction targets the truly-oldest."""
+        from mcp_1c.domain.mxl import MxlDocument
+        from mcp_1c.engines.mxl.engine import _LRUDict
+
+        cache = _LRUDict(max_size=2)
+        cache["a"] = MxlDocument(source_path="a")
+        cache["b"] = MxlDocument(source_path="b")
+        _ = cache["a"]            # 'a' becomes most recent
+        cache["c"] = MxlDocument(source_path="c")  # evicts 'b'
+
+        assert "a" in cache
+        assert "b" not in cache
+        assert "c" in cache
+
+    def test_engine_uses_configured_cache_size(self) -> None:
+        """MxlEngine() picks up server.mxl_cache_size from config by default."""
+        from mcp_1c.config import get_config
+        from mcp_1c.engines.mxl.engine import MxlEngine
+
+        config = get_config()
+        engine = MxlEngine()
+        assert engine._cache._max_size == config.server.mxl_cache_size
+
+    def test_engine_explicit_cache_size_overrides_config(self) -> None:
+        from mcp_1c.engines.mxl.engine import MxlEngine
+
+        engine = MxlEngine(cache_size=7)
+        assert engine._cache._max_size == 7

@@ -17,69 +17,65 @@
 
 ## Установка
 
-### Из PyPI (рекомендуется)
+> **Статус:** пакет на PyPI ещё не опубликован. Текущий способ установки — из git.
+
+### Из git
 
 ```bash
-pip install mcp-1c
+git clone https://github.com/Farkhat1984/1C_MCP.git
+cd 1C_MCP
+pip install -e ".[dev]"
 ```
 
-### Из исходников
+### Опциональные зависимости
 
 ```bash
-git clone https://github.com/your-org/mcp-1c.git
-cd mcp-1c
-pip install -e ".[dev]"
+# Будущее: локальный fallback embeddings без облака (Phase 1)
+# pip install -e ".[local-embeddings]"
 ```
 
 ## Быстрый старт
 
 ### 1. Настройка MCP сервера
 
-#### Глобальная настройка (для Claude Desktop)
+См. подробную инструкцию: [docs/setup/claude-desktop.md](docs/setup/claude-desktop.md).
 
-Добавьте в `~/.claude/mcp_servers.json` (Linux/Mac) или `%USERPROFILE%\.claude\mcp_servers.json` (Windows):
+Минимальный конфиг для Claude Desktop:
 
 ```json
 {
   "mcpServers": {
     "mcp-1c": {
       "command": "mcp-1c",
-      "args": []
+      "args": [],
+      "env": {
+        "MCP_LOG_LEVEL": "INFO",
+        "MCP_EMBEDDING_BACKEND": "local"
+      }
     }
   }
 }
 ```
 
-#### Локальная настройка (для конкретной конфигурации 1С)
-
-Создайте файл `.mcp.json` в корне выгруженной конфигурации:
-
-```json
-{
-  "mcpServers": {
-    "mcp-1c": {
-      "command": "python",
-      "args": ["-m", "mcp_1c"]
-    }
-  }
-}
-```
-
-> **Примечание:** Локальная настройка удобна для работы с несколькими конфигурациями — каждая использует свой кэш.
+> Без `MCP_EMBEDDING_API_KEY` сервер автоматически переключится на локальные embeddings (требуется `pip install -e ".[local-embeddings]"`).
 
 ### 2. Инициализация
 
 В Claude Code выполните:
 
 ```
-Инициализируй конфигурацию по пути C:\Projects\MyConfig
+metadata-init path="/home/me/projects/MyConfig"
 ```
 
-Или используйте skill:
+(на Windows — `path="C:/Projects/MyConfig"`).
+
+Проверка:
 
 ```
-/1c-metadata Справочник.Номенклатура
+/1c-metadata object="Справочник.Номенклатура"
 ```
+
+Кэш и embeddings лягут в `~/.cache/mcp-1c/<id>/` (Linux/Mac) или `%LOCALAPPDATA%\mcp-1c\<id>\` (Windows). Каталог конфигурации **не засоряется**.
 
 ## Пайплайн работы
 
@@ -183,100 +179,120 @@ pip install -e ".[dev]"
 
 ## Инструменты (Tools)
 
-### Metadata Tools
+Зарегистрировано **67 инструментов** (см. `tools/registry.py`). Имена с дефисом, кроме исторических `embedding.*` и `graph.*` (с точкой). Источник истины — `tools/constants.py`.
+
+### Дополнительно (Phase 2–9 расширения):
+
+| Категория | Tools |
+|---|---|
+| Form (содержимое Form.xml) | `form-get`, `form-handlers`, `form-attributes` |
+| СКД / DataCompositionSchema | `composition-get`, `composition-fields`, `composition-datasets`, `composition-settings` |
+| Extensions (.cfe) | `extension-list`, `extension-objects`, `extension-impact` |
+| BSP knowledge | `bsp-find`, `bsp-hook`, `bsp-modules`, `bsp-review` |
+| Runtime via 1С HTTP-сервис (требует настройки MCPBridge.cfe) | `runtime-status`, `runtime-query`, `runtime-eval`, `runtime-data`, `runtime-method` |
+| Premium | `diff-configurations`, `test-data-generate` |
+
+
+### Metadata Tools (4)
 
 | Инструмент | Описание |
 |------------|----------|
-| `metadata.init` | Инициализация индекса метаданных |
-| `metadata.list` | Список объектов по типу |
-| `metadata.get` | Полная информация об объекте |
-| `metadata.search` | Поиск по имени/синониму |
-| `metadata.tree` | Дерево подсистем |
-| `metadata.attributes` | Реквизиты объекта |
-| `metadata.forms` | Формы объекта |
-| `metadata.templates` | Макеты объекта |
-| `metadata.registers` | Регистры документа |
-| `metadata.references` | Связи объекта |
+| `metadata-init` | Инициализация индекса метаданных |
+| `metadata-list` | Список объектов по типу |
+| `metadata-get` | Полная информация об объекте (реквизиты, формы, макеты, регистры, связи) |
+| `metadata-search` | Поиск по имени/синониму |
 
-### Code Tools
+### Code Tools (9)
 
 | Инструмент | Описание |
 |------------|----------|
-| `code.module` | Получить код модуля |
-| `code.procedure` | Получить код процедуры |
-| `code.resolve` | Найти определение |
-| `code.usages` | Найти использования |
-| `code.dependencies` | Граф зависимостей |
-| `code.analyze` | Расширенный анализ модуля |
-| `code.callgraph` | Граф вызовов процедур |
-| `code.validate` | Проверка синтаксиса |
-| `code.lint` | Статический анализ |
-| `code.format` | Форматирование кода |
-| `code.complexity` | Анализ сложности |
+| `code-module` | Получить код модуля |
+| `code-procedure` | Получить код процедуры |
+| `code-dependencies` | Граф зависимостей |
+| `code-callgraph` | Граф вызовов процедур |
+| `code-validate` | Проверка синтаксиса |
+| `code-lint` | Статический анализ |
+| `code-format` | Форматирование кода |
+| `code-complexity` | Анализ сложности |
+| `code-dead-code` | Поиск мёртвого кода |
 
-### Generate Tools
+### Generate Tools (8) — генерация по шаблонам
 
 | Инструмент | Описание |
 |------------|----------|
-| `generate.query` | Генерация запроса |
-| `generate.handler` | Генерация обработчика события |
-| `generate.print` | Генерация печатной формы |
-| `generate.movement` | Генерация движений по регистрам |
-| `generate.api` | Генерация API-методов |
-| `generate.form_handler` | Обработчики формы |
-| `generate.subscription` | Подписка на событие |
-| `generate.scheduled_job` | Регламентное задание |
+| `generate-query` | Генерация запроса (12 шаблонов) |
+| `generate-handler` | Обработчик события (10 шаблонов) |
+| `generate-print` | Печатная форма (3 шаблона) |
+| `generate-movement` | Движения по регистрам (7 шаблонов) |
+| `generate-api` | API-методы (HTTP/Web service/JSON) |
+| `generate-form_handler` | Обработчик формы |
+| `generate-subscription` | Подписка на событие |
+| `generate-scheduled_job` | Регламентное задание |
 
-### Query Tools
-
-| Инструмент | Описание |
-|------------|----------|
-| `query.parse` | Разбор запроса |
-| `query.validate` | Валидация с метаданными |
-| `query.optimize` | Оптимизация запроса |
-| `query.explain` | Объяснение запроса |
-| `query.tables` | Таблицы в запросе |
-
-### Pattern Tools
+### Smart Tools (3) — генерация с учётом метаданных
 
 | Инструмент | Описание |
 |------------|----------|
-| `pattern.list` | Список шаблонов |
-| `pattern.get` | Получить шаблон |
-| `pattern.apply` | Применить шаблон |
-| `pattern.suggest` | Предложить шаблон |
-| `pattern.search` | Поиск шаблонов |
+| `smart-query` | Запрос на основе реальной структуры объекта |
+| `smart-print` | Печатная форма с учётом макета и реквизитов |
+| `smart-movement` | Движения по структуре регистров документа |
 
-### Template Tools (MXL)
+### Query Tools (2)
 
 | Инструмент | Описание |
 |------------|----------|
-| `template.get` | Структура макета |
-| `template.parameters` | Параметры макета |
-| `template.areas` | Области макета |
-| `template.generate_fill_code` | Код заполнения макета |
-| `template.find` | Поиск макетов |
+| `query-validate` | Валидация запроса по метаданным |
+| `query-optimize` | Подсказки по оптимизации |
 
-### Platform Tools
+### Pattern Tools (3)
 
 | Инструмент | Описание |
 |------------|----------|
-| `platform.method` | Описание метода платформы |
-| `platform.type` | Описание типа данных |
-| `platform.event` | Описание события объекта |
-| `platform.search` | Поиск по API платформы |
-| `platform.global_context` | Глобальный контекст |
+| `pattern-list` | Список шаблонов |
+| `pattern-apply` | Применить шаблон |
+| `pattern-suggest` | Предложить шаблон под задачу |
 
-### Config Tools
+### Template Tools (MXL, 3)
 
 | Инструмент | Описание |
 |------------|----------|
-| `config.options` | Функциональные опции |
-| `config.constants` | Константы |
-| `config.scheduled_jobs` | Регламентные задания |
-| `config.event_subscriptions` | Подписки на события |
-| `config.exchanges` | Планы обмена |
-| `config.http_services` | HTTP-сервисы |
+| `template-get` | Структура макета (области, параметры) |
+| `template-generate_fill_code` | Код заполнения макета по областям |
+| `template-find` | Поиск макетов по конфигурации |
+
+### Platform Tools (2)
+
+| Инструмент | Описание |
+|------------|----------|
+| `platform-search` | Универсальный поиск по API/типам/событиям платформы |
+| `platform-global_context` | Глобальный контекст (методы и свойства) |
+
+### Config Tools (4)
+
+| Инструмент | Описание |
+|------------|----------|
+| `config-objects` | Объекты по типу: FunctionalOption, Constant, ScheduledJob, EventSubscription, ExchangePlan, HTTPService и др. |
+| `config-roles` | Список ролей конфигурации |
+| `config-role-rights` | Права роли по объектам |
+| `config-compare` | Сравнение конфигураций |
+
+### Knowledge Graph Tools (4)
+
+| Инструмент | Описание |
+|------------|----------|
+| `graph.build` | Построить KG по индексированной конфигурации |
+| `graph.related` | Связанные узлы для объекта |
+| `graph.impact` | Blast-radius изменений объекта |
+| `graph.stats` | Статистика графа |
+
+### Embedding Tools (4)
+
+| Инструмент | Описание |
+|------------|----------|
+| `embedding.index` | Индексация конфигурации в векторное хранилище |
+| `embedding.search` | Семантический поиск |
+| `embedding.similar` | Найти похожие фрагменты |
+| `embedding.stats` | Статистика индекса |
 
 ## Skills & Agents
 
@@ -446,49 +462,46 @@ class MyCustomSkill(BasePrompt):
 
 ## Примеры использования
 
+Tools вызываются через MCP-протокол (Claude Code/Desktop). Имена приведены в текущей нотации (`tools/constants.py`).
+
 ### Анализ метаданных
 
-```python
-# Получить информацию о справочнике
-metadata.get type="Catalog" name="Номенклатура"
-
-# Найти все документы с "Продажа" в названии
-metadata.search query="Продажа" type="Document"
-
-# Получить реквизиты документа
-metadata.attributes type="Document" name="РеализацияТоваров"
+```text
+metadata-get type=Catalog name=Номенклатура
+metadata-search query=Продажа type=Document
+metadata-list type=AccumulationRegister
 ```
 
 ### Анализ кода
 
-```python
-# Получить код модуля объекта
-code.module type="Document" name="РеализацияТоваров" module_type="ObjectModule"
-
-# Найти все использования процедуры
-code.usages type="CommonModule" name="ОбщегоНазначения" procedure="ПолучитьЗначение"
-
-# Получить граф зависимостей
-code.dependencies type="Document" name="РеализацияТоваров"
+```text
+code-module type=Document name=РеализацияТоваров module_type=ObjectModule
+code-dependencies type=Document name=РеализацияТоваров
+code-callgraph type=CommonModule name=ОбщегоНазначения
+code-complexity type=Document name=РеализацияТоваров module_type=ObjectModule
+embedding.search query="расчёт скидки"
 ```
 
 ### Генерация кода
 
-```python
-# Сгенерировать запрос
-generate.query template="select_with_filter"
-  table="Справочник.Номенклатура"
-  filter_field="Родитель"
+```text
+# По шаблону
+generate-query template_id=query.select_simple values={TableName: "Справочник.Номенклатура", Fields: "Ссылка, Наименование"}
+generate-handler template_id=handler.before_write values={...}
+generate-movement template_id=movement.accumulation_expense values={...}
 
-# Сгенерировать обработчик
-generate.handler template="before_write"
-  object_type="Document"
-  object_name="РеализацияТоваров"
+# С учётом реальной структуры объекта (smart)
+smart-query object="Справочник.Номенклатура"
+smart-movement document="РеализацияТоваров"
+smart-print object="Документ.Счет"
+```
 
-# Сгенерировать движения
-generate.movement template="expense"
-  register="РегистрНакопления.ОстаткиТоваров"
-  document="РеализацияТоваров"
+### Граф знаний и связи
+
+```text
+graph.build
+graph.related node="Document.РеализацияТоваров"
+graph.impact node="Catalog.Номенклатура"
 ```
 
 ## Архитектура

@@ -191,7 +191,7 @@ class TestUsagesSkill:
 
         assert len(messages) == 1
         assert "ЗаполнитьТабличнуюЧасть" in messages[0].content.text
-        assert "code-usages" in messages[0].content.text
+        assert "embedding.search" in messages[0].content.text
 
 
 class TestValidateSkill:
@@ -261,7 +261,7 @@ class TestExplainSkill:
 
         assert len(messages) == 1
         assert "ОбщийМодуль.РаботаСФайлами" in messages[0].content.text
-        assert "code-analyze" in messages[0].content.text
+        assert "code-complexity" in messages[0].content.text
 
     @pytest.mark.asyncio
     async def test_generate_messages_with_procedure(self) -> None:

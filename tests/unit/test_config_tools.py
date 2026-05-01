@@ -6,13 +6,14 @@ import pytest
 import pytest_asyncio
 
 from mcp_1c.engines.metadata import MetadataEngine
+from mcp_1c.tools.base import ToolError
 from mcp_1c.tools.config_tools import (
-    ConfigOptionsTool,
     ConfigConstantsTool,
-    ConfigScheduledJobsTool,
     ConfigEventSubscriptionsTool,
     ConfigExchangesTool,
     ConfigHttpServicesTool,
+    ConfigOptionsTool,
+    ConfigScheduledJobsTool,
 )
 
 
@@ -62,9 +63,8 @@ class TestConfigOptionsTool:
     async def test_get_option_not_found(self, initialized_engine):
         """Test getting non-existent option."""
         tool = ConfigOptionsTool(initialized_engine)
-        result = await tool.execute({"name": "НесуществующаяОпция"})
-
-        assert "error" in result
+        with pytest.raises(ToolError, match="not found"):
+            await tool.execute({"name": "НесуществующаяОпция"})
 
     @pytest.mark.asyncio
     async def test_get_option_with_usage(self, initialized_engine):
@@ -108,9 +108,8 @@ class TestConfigConstantsTool:
     async def test_get_constant_not_found(self, initialized_engine):
         """Test getting non-existent constant."""
         tool = ConfigConstantsTool(initialized_engine)
-        result = await tool.execute({"name": "НесуществующаяКонстанта"})
-
-        assert "error" in result
+        with pytest.raises(ToolError, match="not found"):
+            await tool.execute({"name": "НесуществующаяКонстанта"})
 
 
 class TestConfigScheduledJobsTool:
@@ -142,9 +141,8 @@ class TestConfigScheduledJobsTool:
     async def test_get_job_not_found(self, initialized_engine):
         """Test getting non-existent job."""
         tool = ConfigScheduledJobsTool(initialized_engine)
-        result = await tool.execute({"name": "НесуществующееЗадание"})
-
-        assert "error" in result
+        with pytest.raises(ToolError, match="not found"):
+            await tool.execute({"name": "НесуществующееЗадание"})
 
 
 class TestConfigEventSubscriptionsTool:
@@ -176,9 +174,8 @@ class TestConfigEventSubscriptionsTool:
     async def test_get_subscription_not_found(self, initialized_engine):
         """Test getting non-existent subscription."""
         tool = ConfigEventSubscriptionsTool(initialized_engine)
-        result = await tool.execute({"name": "НесуществующаяПодписка"})
-
-        assert "error" in result
+        with pytest.raises(ToolError, match="not found"):
+            await tool.execute({"name": "НесуществующаяПодписка"})
 
     @pytest.mark.asyncio
     async def test_filter_subscriptions(self, initialized_engine):
@@ -223,9 +220,8 @@ class TestConfigExchangesTool:
     async def test_get_exchange_not_found(self, initialized_engine):
         """Test getting non-existent exchange plan."""
         tool = ConfigExchangesTool(initialized_engine)
-        result = await tool.execute({"name": "НесуществующийПлан"})
-
-        assert "error" in result
+        with pytest.raises(ToolError, match="not found"):
+            await tool.execute({"name": "НесуществующийПлан"})
 
 
 class TestConfigHttpServicesTool:
@@ -257,6 +253,5 @@ class TestConfigHttpServicesTool:
     async def test_get_service_not_found(self, initialized_engine):
         """Test getting non-existent HTTP service."""
         tool = ConfigHttpServicesTool(initialized_engine)
-        result = await tool.execute({"name": "НесуществующийСервис"})
-
-        assert "error" in result
+        with pytest.raises(ToolError, match="not found"):
+            await tool.execute({"name": "НесуществующийСервис"})

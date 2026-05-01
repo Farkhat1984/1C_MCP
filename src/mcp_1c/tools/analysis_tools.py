@@ -400,7 +400,7 @@ class ConfigRolesTool(BaseTool):
         if name:
             role_xml = _find_role_xml(config_path, name)
             if role_xml is None:
-                return {"error": f"Role '{name}' not found"}
+                raise ToolError(f"Role '{name}' not found", code="OBJECT_NOT_FOUND")
 
             try:
                 return _parse_role_xml(role_xml)

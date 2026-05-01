@@ -8,13 +8,21 @@ at the configuration level (not code-level dependencies).
 from __future__ import annotations
 
 from collections import defaultdict
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class RelationshipType(str, Enum):
-    """Types of relationships between metadata objects."""
+class RelationshipType(StrEnum):
+    """Types of relationships between metadata objects.
+
+    The first block describes config-level wiring (one metadata object
+    references another). The ``PROCEDURE_*`` and ``CODE_*`` block
+    describes BSL-level dependencies — added in Phase 1 once the LSP
+    parser made code-level extraction reliable. Both kinds live in the
+    same graph so impact analysis can cross from "this attribute"
+    to "this procedure that reads it" in a single traversal.
+    """
 
     ATTRIBUTE_REFERENCE = "attribute_reference"
     TABULAR_REFERENCE = "tabular_reference"
@@ -32,6 +40,15 @@ class RelationshipType(str, Enum):
     SUBSCRIPTION_HANDLER = "subscription_handler"
     SCHEDULED_JOB_METHOD = "scheduled_job_method"
     COMMON_ATTRIBUTE_USAGE = "common_attribute_usage"
+    # Code-level edges (Phase 1)
+    PROCEDURE_OWNERSHIP = "procedure_ownership"
+    PROCEDURE_CALL = "procedure_call"
+    CODE_METADATA_REFERENCE = "code_metadata_reference"
+    CODE_QUERY_REFERENCE = "code_query_reference"
+    # Extension edges (Phase F2)
+    EXTENSION_ADOPTS = "extension_adopts"
+    EXTENSION_REPLACES = "extension_replaces"
+    EXTENSION_OWNS = "extension_owns"
 
 
 class GraphNode(BaseModel):

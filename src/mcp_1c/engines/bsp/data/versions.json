@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "comment": "BSP versions and the typical configurations they ship with.",
+  "versions": [
+    {"version": "3.1.10", "released": "2024", "configurations": ["БП 3.0", "ЗУП 3.1", "УТ 11.5"]},
+    {"version": "3.1.9", "released": "2023", "configurations": ["ERP 2.5", "УТ 11.5"]},
+    {"version": "3.1.7", "released": "2022", "configurations": ["БП 3.0", "УТ 11.4"]}
+  ]
+}

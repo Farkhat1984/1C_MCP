@@ -12,7 +12,7 @@ from typing import Any, ClassVar
 from mcp_1c.domain.metadata import MetadataType, ModuleType
 from mcp_1c.engines.code import CodeEngine, DependencyGraphBuilder, BslLanguageServer
 from mcp_1c.engines.metadata import MetadataEngine
-from mcp_1c.tools.base import BaseTool, parse_metadata_type
+from mcp_1c.tools.base import BaseTool, ToolError, parse_metadata_type
 
 
 class CodeModuleTool(BaseTool):
@@ -68,7 +68,7 @@ class CodeModuleTool(BaseTool):
         try:
             module_type = ModuleType(module_str)
         except ValueError:
-            return {"error": f"Unknown module type: {module_str}"}
+            raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
 
         # Get module
         engine = self._engine
@@ -159,7 +159,7 @@ class CodeProcedureTool(BaseTool):
         try:
             module_type = ModuleType(module_str)
         except ValueError:
-            return {"error": f"Unknown module type: {module_str}"}
+            raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
 
         # Get procedure
         engine = self._engine
@@ -389,14 +389,17 @@ class CodeDependenciesTool(BaseTool):
         try:
             module_type = ModuleType(module_str)
         except ValueError:
-            return {"error": f"Unknown module type: {module_str}"}
+            raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
 
         # Get module path
         code_engine = self._engine
         module = await code_engine.get_module(metadata_type, obj_name, module_type)
 
         if module is None:
-            return {"error": f"Module not found: {type_str}.{obj_name}/{module_str}"}
+            raise ToolError(
+                f"Module not found: {type_str}.{obj_name}/{module_str}",
+                code="MODULE_NOT_FOUND",
+            )
 
         # Build dependency graph
         builder = DependencyGraphBuilder()
@@ -524,14 +527,17 @@ class CodeAnalyzeTool(BaseTool):
         try:
             module_type = ModuleType(module_str)
         except ValueError:
-            return {"error": f"Unknown module type: {module_str}"}
+            raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
 
         # Get module
         code_engine = self._engine
         module = await code_engine.get_module(metadata_type, obj_name, module_type)
 
         if module is None:
-            return {"error": f"Module not found: {type_str}.{obj_name}/{module_str}"}
+            raise ToolError(
+                f"Module not found: {type_str}.{obj_name}/{module_str}",
+                code="MODULE_NOT_FOUND",
+            )
 
         # Parse with extended analysis
         builder = DependencyGraphBuilder()
@@ -661,14 +667,17 @@ class CodeCallGraphTool(BaseTool):
         try:
             module_type = ModuleType(module_str)
         except ValueError:
-            return {"error": f"Unknown module type: {module_str}"}
+            raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
 
         # Get module
         code_engine = self._engine
         module = await code_engine.get_module(metadata_type, obj_name, module_type)
 
         if module is None:
-            return {"error": f"Module not found: {type_str}.{obj_name}/{module_str}"}
+            raise ToolError(
+                f"Module not found: {type_str}.{obj_name}/{module_str}",
+                code="MODULE_NOT_FOUND",
+            )
 
         # Build graph
         builder = DependencyGraphBuilder()
@@ -741,20 +750,26 @@ class CodeValidateTool(BaseTool):
             module_str = arguments.get("module", "ObjectModule")
 
             if not type_str or not obj_name:
-                return {"error": "Either 'path' or 'type'+'name' must be provided"}
+                raise ToolError(
+                    "Either 'path' or 'type'+'name' must be provided",
+                    code="MISSING_PARAM",
+                )
 
             metadata_type = parse_metadata_type(type_str)
 
             try:
                 module_type = ModuleType(module_str)
             except ValueError:
-                return {"error": f"Unknown module type: {module_str}"}
+                raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
 
             code_engine = self._engine
             module = await code_engine.get_module(metadata_type, obj_name, module_type)
 
             if module is None:
-                return {"error": f"Module not found: {type_str}.{obj_name}/{module_str}"}
+                raise ToolError(
+                f"Module not found: {type_str}.{obj_name}/{module_str}",
+                code="MODULE_NOT_FOUND",
+            )
 
             file_path = module.path
 
@@ -835,20 +850,26 @@ class CodeLintTool(BaseTool):
             module_str = arguments.get("module", "ObjectModule")
 
             if not type_str or not obj_name:
-                return {"error": "Either 'path' or 'type'+'name' must be provided"}
+                raise ToolError(
+                    "Either 'path' or 'type'+'name' must be provided",
+                    code="MISSING_PARAM",
+                )
 
             metadata_type = parse_metadata_type(type_str)
 
             try:
                 module_type = ModuleType(module_str)
             except ValueError:
-                return {"error": f"Unknown module type: {module_str}"}
+                raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
 
             code_engine = self._engine
             module = await code_engine.get_module(metadata_type, obj_name, module_type)
 
             if module is None:
-                return {"error": f"Module not found: {type_str}.{obj_name}/{module_str}"}
+                raise ToolError(
+                f"Module not found: {type_str}.{obj_name}/{module_str}",
+                code="MODULE_NOT_FOUND",
+            )
 
             target_path = module.path
 
@@ -941,25 +962,31 @@ class CodeFormatTool(BaseTool):
             module_str = arguments.get("module", "ObjectModule")
 
             if not type_str or not obj_name:
-                return {"error": "Either 'path' or 'type'+'name' must be provided"}
+                raise ToolError(
+                    "Either 'path' or 'type'+'name' must be provided",
+                    code="MISSING_PARAM",
+                )
 
             metadata_type = parse_metadata_type(type_str)
 
             try:
                 module_type = ModuleType(module_str)
             except ValueError:
-                return {"error": f"Unknown module type: {module_str}"}
+                raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
 
             code_engine = self._engine
             module = await code_engine.get_module(metadata_type, obj_name, module_type)
 
             if module is None:
-                return {"error": f"Module not found: {type_str}.{obj_name}/{module_str}"}
+                raise ToolError(
+                f"Module not found: {type_str}.{obj_name}/{module_str}",
+                code="MODULE_NOT_FOUND",
+            )
 
             file_path = module.path
 
         if not file_path.exists():
-            return {"error": f"File not found: {file_path}"}
+            raise ToolError(f"File not found: {file_path}", code="FILE_NOT_FOUND")
 
         # Read original
         with open(file_path, encoding="utf-8-sig") as f:
@@ -970,7 +997,7 @@ class CodeFormatTool(BaseTool):
         formatted = await bsl_ls.format_file(file_path)
 
         if formatted is None:
-            return {"error": "Formatting failed"}
+            raise ToolError("Formatting failed", code="FORMAT_FAILED")
 
         # Calculate changes
         original_lines = original.splitlines()
@@ -1053,25 +1080,31 @@ class CodeComplexityTool(BaseTool):
             module_str = arguments.get("module", "ObjectModule")
 
             if not type_str or not obj_name:
-                return {"error": "Either 'path' or 'type'+'name' must be provided"}
+                raise ToolError(
+                    "Either 'path' or 'type'+'name' must be provided",
+                    code="MISSING_PARAM",
+                )
 
             metadata_type = parse_metadata_type(type_str)
 
             try:
                 module_type = ModuleType(module_str)
             except ValueError:
-                return {"error": f"Unknown module type: {module_str}"}
+                raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
 
             code_engine = self._engine
             module = await code_engine.get_module(metadata_type, obj_name, module_type)
 
             if module is None:
-                return {"error": f"Module not found: {type_str}.{obj_name}/{module_str}"}
+                raise ToolError(
+                f"Module not found: {type_str}.{obj_name}/{module_str}",
+                code="MODULE_NOT_FOUND",
+            )
 
             file_path = module.path
 
         if not file_path.exists():
-            return {"error": f"File not found: {file_path}"}
+            raise ToolError(f"File not found: {file_path}", code="FILE_NOT_FOUND")
 
         # Analyze complexity
         bsl_ls = BslLanguageServer.get_instance()

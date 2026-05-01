@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "comment": "Top-30 modules from BSP (Library of Standard Subsystems) with their typical exported APIs. Curated from БСП 3.1.x public docs. Procedure signatures simplified — see БСП docs for full parameter typing.",
+  "modules": [
+    {
+      "name": "ОбщегоНазначения",
+      "kind": "Server",
+      "purpose": "Серверные методы общего назначения: работа с метаданными, ссылками, табличными частями, сериализация",
+      "tags": ["util", "server", "core"],
+      "procedures": [
+        {"name": "ЗначенияРеквизитовОбъекта", "exported": true, "signature": "Объект, Реквизиты", "description": "Получить значения нескольких реквизитов одним запросом"},
+        {"name": "ЗначениеРеквизитаОбъекта", "exported": true, "signature": "Ссылка, ИмяРеквизита", "description": "Получить значение реквизита по ссылке"},
+        {"name": "ВыполнитьОбработкуВТранзакции", "exported": true, "signature": "Обработчик, Параметры", "description": "Выполнить процедуру в транзакции"},
+        {"name": "ТекущаяДатаПользователя", "exported": true, "signature": "", "description": "Текущая дата с учётом часового пояса пользователя"},
+        {"name": "СообщитьПользователю", "exported": true, "signature": "Текст, ПолеФормы = Неопределено", "description": "Вывод сообщения пользователю"},
+        {"name": "СтруктураВСоответствие", "exported": true, "signature": "Структура", "description": "Конвертация Структуры в Соответствие"}
+      ]
+    },
+    {
+      "name": "ОбщегоНазначенияКлиент",
+      "kind": "Client",
+      "purpose": "Клиентские методы общего назначения",
+      "tags": ["util", "client"],
+      "procedures": [
+        {"name": "ПоказатьВопрос", "exported": true, "signature": "Оповещение, Вопрос, Кнопки = Неопределено", "description": "Асинхронное окно вопроса"},
+        {"name": "ПоказатьПредупреждение", "exported": true, "signature": "Оповещение, Текст", "description": "Асинхронное предупреждение"},
+        {"name": "ОткрытьФорму", "exported": false, "signature": "ИмяФормы, Параметры = Неопределено, Владелец = Неопределено", "description": "Открыть форму (тонкая обёртка над платформенной)"}
+      ]
+    },
+    {
+      "name": "ОбщегоНазначенияКлиентСервер",
+      "kind": "ClientServer",
+      "purpose": "Методы, доступные на клиенте и сервере (без работы с БД)",
+      "tags": ["util", "client", "server"],
+      "procedures": [
+        {"name": "ДополнитьМассив", "exported": true, "signature": "Массив, Дополнение, УникальныеЭлементы = Ложь", "description": "Расширить массив элементами другого массива"},
+        {"name": "ВалидноеЗначение", "exported": true, "signature": "Значение, ОжидаемыеТипы", "description": "Проверить, что значение принадлежит ожидаемому набору типов"}
+      ]
+    },
+    {
+      "name": "СтандартныеПодсистемыСервер",
+      "kind": "Server",
+      "purpose": "Серверные точки входа БСП и переопределения",
+      "tags": ["bsp", "server", "core"],
+      "procedures": [
+        {"name": "ПриДобавленииПодсистемы", "exported": true, "signature": "ОписаниеПодсистемы", "description": "Регистрация подсистемы при инициализации"}
+      ]
+    },
+    {
+      "name": "СтандартныеПодсистемыКлиент",
+      "kind": "Client",
+      "purpose": "Клиентские точки входа БСП",
+      "tags": ["bsp", "client", "core"],
+      "procedures": [
+        {"name": "ПриЗапуске", "exported": true, "signature": "Параметры", "description": "Обработчик стартового сценария БСП"}
+      ]
+    },
+    {
+      "name": "Пользователи",
+      "kind": "Server",
+      "purpose": "Работа с пользователями: текущий пользователь, права, профили",
+      "tags": ["users", "auth", "server"],
+      "procedures": [
+        {"name": "ТекущийПользователь", "exported": true, "signature": "", "description": "Текущий пользователь информационной базы"},
+        {"name": "АвторизованныйПользователь", "exported": true, "signature": "", "description": "Пользователь с учётом RLS"},
+        {"name": "РолиДоступныПользователю", "exported": true, "signature": "Пользователь, Роли", "description": "Проверка ролей у пользователя"},
+        {"name": "ЭтоПолноправныйПользователь", "exported": true, "signature": "Пользователь = Неопределено", "description": "Имеет ли пользователь права администратора"}
+      ]
+    },
+    {
+      "name": "Справочники",
+      "kind": "Server",
+      "purpose": "Утилиты по работе со справочниками",
+      "tags": ["catalogs", "server"],
+      "procedures": [
+        {"name": "СформироватьВыборку", "exported": true, "signature": "ИмяСправочника, Отбор", "description": "Получить выборку с обработанным отбором"}
+      ]
+    },
+    {
+      "name": "УправлениеПечатью",
+      "kind": "Server",
+      "purpose": "Печать табличных документов: формирование и вывод печатных форм",
+      "tags": ["print", "server"],
+      "procedures": [
+        {"name": "СформироватьПечатныеФормы", "exported": true, "signature": "МассивОбъектов, ИменаПечатныхФорм, КоллекцияПечатныхФорм, ОбъектыПечати, ПараметрыВывода", "description": "Главная процедура программного интерфейса печати"},
+        {"name": "ВыдатьТабличныйДокументВКоллекцию", "exported": true, "signature": "КоллекцияПечатныхФорм, ИмяПФ, СинонимПФ, ТабДокумент, ПолноеИмяОбъекта = '', ПечатнаяФорма1С = Истина", "description": "Добавить сформированный документ в коллекцию"}
+      ]
+    },
+    {
+      "name": "УправлениеПечатьюКлиент",
+      "kind": "Client",
+      "purpose": "Клиентская часть печати — открытие форм печати",
+      "tags": ["print", "client"]
+    },
+    {
+      "name": "ФайловыеФункции",
+      "kind": "Server",
+      "purpose": "Работа с файлами в режиме хранения файлов БСП",
+      "tags": ["files", "server"],
+      "procedures": [
+        {"name": "ПолучитьИнформациюОФайле", "exported": true, "signature": "ФайлСсылка", "description": "Метаданные файла из хранилища"}
+      ]
+    },
+    {
+      "name": "ОбменДанными",
+      "kind": "Server",
+      "purpose": "API подсистемы обмена данными",
+      "tags": ["exchange", "server"],
+      "procedures": [
+        {"name": "ВыполнитьОбмен", "exported": true, "signature": "Параметры", "description": "Запустить сеанс обмена"}
+      ]
+    },
+    {
+      "name": "АдресныйКлассификатор",
+      "kind": "Server",
+      "purpose": "Работа с адресным классификатором (ФИАС/КЛАДР)",
+      "tags": ["address", "server"]
+    },
+    {
+      "name": "Версионирование",
+      "kind": "Server",
+      "purpose": "Версионирование объектов БСП",
+      "tags": ["versioning", "server"]
+    },
+    {
+      "name": "ДополнительныеОтчётыИОбработки",
+      "kind": "Server",
+      "purpose": "Подключение внешних отчётов и обработок",
+      "tags": ["additional", "server"]
+    },
+    {
+      "name": "Свойства",
+      "kind": "Server",
+      "purpose": "Дополнительные реквизиты и сведения объектов",
+      "tags": ["properties", "server"]
+    },
+    {
+      "name": "ЭлектроннаяПодпись",
+      "kind": "Server",
+      "purpose": "ЭЦП документов",
+      "tags": ["security", "server"]
+    },
+    {
+      "name": "РегламентныеЗаданияСервер",
+      "kind": "Server",
+      "purpose": "Управление регламентными заданиями",
+      "tags": ["scheduled", "server"],
+      "procedures": [
+        {"name": "ВключитьВыполнение", "exported": true, "signature": "ИмяРегламентногоЗадания", "description": "Включить регл.задание по имени"}
+      ]
+    },
+    {
+      "name": "СохранениеПользовательскихНастроек",
+      "kind": "Server",
+      "purpose": "Сохранение и восстановление настроек пользователей",
+      "tags": ["settings", "server"]
+    },
+    {
+      "name": "БизнесПроцессыИЗадачи",
+      "kind": "Server",
+      "purpose": "API подсистемы бизнес-процессов",
+      "tags": ["bp", "server"]
+    },
+    {
+      "name": "ЗапланированныеОперации",
+      "kind": "Server",
+      "purpose": "Операции, запланированные пользователем",
+      "tags": ["scheduled", "server"]
+    },
+    {
+      "name": "РаботаСФайлами",
+      "kind": "Server",
+      "purpose": "Хранение файлов и томов",
+      "tags": ["files", "server"]
+    },
+    {
+      "name": "ОценкаПроизводительности",
+      "kind": "Server",
+      "purpose": "Замеры производительности ключевых операций",
+      "tags": ["perf", "server"]
+    },
+    {
+      "name": "ИнтернетПоддержкаПользователей",
+      "kind": "Server",
+      "purpose": "Интеграция с порталом 1С",
+      "tags": ["integration", "server"]
+    },
+    {
+      "name": "АдминистрированиеИнформационнойБазы",
+      "kind": "Server",
+      "purpose": "Администрирование ИБ",
+      "tags": ["admin", "server"]
+    },
+    {
+      "name": "ОбновлениеИнформационнойБазы",
+      "kind": "Server",
+      "purpose": "Обработчики обновления ИБ",
+      "tags": ["update", "server"],
+      "procedures": [
+        {"name": "ПриДобавленииОбработчиковОбновления", "exported": true, "signature": "Обработчики", "description": "Регистрация обработчиков обновления"}
+      ]
+    },
+    {
+      "name": "ВариантыОтчётов",
+      "kind": "Server",
+      "purpose": "Управление вариантами отчётов",
+      "tags": ["reports", "server"]
+    },
+    {
+      "name": "Календарь",
+      "kind": "Server",
+      "purpose": "Производственный календарь",
+      "tags": ["calendar", "server"]
+    },
+    {
+      "name": "БанковскиеОперации",
+      "kind": "Server",
+      "purpose": "Банковские классификаторы и реквизиты",
+      "tags": ["bank", "server"]
+    },
+    {
+      "name": "Контрагенты",
+      "kind": "Server",
+      "purpose": "Сервис проверки контрагентов",
+      "tags": ["counterparties", "server"]
+    },
+    {
+      "name": "ИсторияРаботы",
+      "kind": "Server",
+      "purpose": "История работы пользователя",
+      "tags": ["history", "server"]
+    }
+  ]
+}

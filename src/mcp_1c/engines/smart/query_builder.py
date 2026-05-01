@@ -7,19 +7,52 @@ from MetadataObject definitions.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from mcp_1c.domain.metadata import Attribute, MetadataObject, TabularSection
 from mcp_1c.engines.smart.type_resolver import TypeResolver
 
-# Attributes to always skip in generated queries
-_SKIP_PREFIXES = ("Удалить",)
+if TYPE_CHECKING:
+    from mcp_1c.engines.profile import ConfigurationProfile
+
+# Default fallback when no profile is bound. Mirrors the historical
+# behaviour: skip ``Удалить``-prefixed legacy attrs.
+_DEFAULT_SKIP_PREFIXES = ("Удалить",)
+# Backward-compat alias — old call-sites use this constant directly.
+_SKIP_PREFIXES = _DEFAULT_SKIP_PREFIXES
 
 # Numeric types in 1C (for totals detection)
 _NUMERIC_TYPES = frozenset({"Number", "Число"})
 
 
-def _should_skip(attr: Attribute) -> bool:
-    """Return True if attribute should be excluded from generated queries."""
-    return any(attr.name.startswith(p) for p in _SKIP_PREFIXES)
+def _should_skip(
+    attr: Attribute, profile: ConfigurationProfile | None = None
+) -> bool:
+    """Return True if attribute should be excluded from generated queries.
+
+    Resolution order:
+    1. Explicit ``profile`` argument (caller-provided).
+    2. Active profile bound via the smart-context ``ContextVar``
+       (set by ``Workspace.open()`` so all smart-* tools running
+       inside the workspace share its conventions).
+    3. Default ``("Удалить",)`` — historical behaviour for callers
+       without any profile (tests, legacy CLI).
+
+    This is the single place that decides "is this a legacy-marker
+    attribute?" — every builder consults it.
+    """
+    if profile is None:
+        # Lazy import keeps the smart package self-contained when the
+        # context module is unused.
+        from mcp_1c.engines.smart.context import get_active_profile
+
+        profile = get_active_profile()
+    prefixes = (
+        tuple(profile.naming.obsolete_prefixes)
+        if profile is not None
+        else _DEFAULT_SKIP_PREFIXES
+    )
+    return any(attr.name.startswith(p) for p in prefixes)
 
 
 def _build_field_expression(

@@ -6,11 +6,10 @@ Provides tools for working with 1C configuration metadata.
 
 from pathlib import Path
 from typing import Any, ClassVar
-import json
 
-from mcp_1c.tools.base import BaseTool, parse_metadata_type
-from mcp_1c.engines.metadata import MetadataEngine
 from mcp_1c.domain.metadata import MetadataType
+from mcp_1c.engines.metadata import MetadataEngine
+from mcp_1c.tools.base import BaseTool, ToolError, parse_metadata_type
 
 
 class MetadataInitTool(BaseTool):
@@ -20,7 +19,11 @@ class MetadataInitTool(BaseTool):
     description: ClassVar[str] = (
         "Initialize the metadata index for a 1C configuration. "
         "Must be called before using other metadata tools. "
-        "Scans the configuration directory and builds a searchable index."
+        "Scans the configuration directory and builds a searchable index. "
+        "Phase F3: also accepts ``overlay_roots`` to index developer-supplied "
+        "trees (e.g. own libraries of CommonModules) alongside the main "
+        "config — they appear in the same KG, search index and embeddings, "
+        "labelled with ``source='overlay:<name>'``."
     )
     input_schema: ClassVar[dict[str, Any]] = {
         "type": "object",
@@ -34,6 +37,30 @@ class MetadataInitTool(BaseTool):
                 "description": "Force full reindexing (default: false)",
                 "default": False,
             },
+            "overlay_roots": {
+                "type": "array",
+                "description": (
+                    "Optional list of developer-supplied overlays. Each entry "
+                    "is an object with `name` (label, e.g. 'team-utils') and "
+                    "`path` (filesystem root). Their contents are indexed into "
+                    "the same KG/embeddings store and tagged with "
+                    "`source='overlay:<name>'`."
+                ),
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "path": {"type": "string"},
+                        "priority": {
+                            "type": "integer",
+                            "default": 100,
+                            "description": "Indexing order; higher first",
+                        },
+                    },
+                    "required": ["name", "path"],
+                },
+                "default": [],
+            },
         },
         "required": ["path"],
     }
@@ -44,12 +71,35 @@ class MetadataInitTool(BaseTool):
 
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Execute metadata initialization."""
+        from mcp_1c.config import OverlayRoot
+
         config_path = Path(arguments["path"])
         full_reindex = arguments.get("full_reindex", False)
+        overlay_args = arguments.get("overlay_roots") or []
+        overlays: list[OverlayRoot] = []
+        for entry in overlay_args:
+            if not isinstance(entry, dict):
+                continue
+            try:
+                overlays.append(
+                    OverlayRoot(
+                        name=str(entry["name"]),
+                        path=Path(entry["path"]),
+                        priority=int(entry.get("priority", 100)),
+                    )
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                from mcp_1c.tools.base import ToolError
+
+                raise ToolError(
+                    f"Invalid overlay entry {entry!r}: {exc}",
+                    code="INVALID_OVERLAY",
+                ) from exc
 
         progress = await self._engine.initialize(
             config_path,
             full_reindex=full_reindex,
+            overlay_roots=overlays,
         )
 
         stats = await self._engine.get_stats()
@@ -57,6 +107,10 @@ class MetadataInitTool(BaseTool):
         return {
             "status": "success",
             "path": str(config_path),
+            "overlays": [
+                {"name": o.name, "path": str(o.path), "priority": o.priority}
+                for o in overlays
+            ],
             "objects_indexed": progress.processed,
             "objects_updated": progress.updated,
             "objects_skipped": progress.skipped,
@@ -148,7 +202,10 @@ class MetadataGetTool(BaseTool):
         obj = await self._engine.get_object(metadata_type, name)
 
         if obj is None:
-            return {"error": f"Object not found: {type_str}.{name}"}
+            raise ToolError(
+                f"Object not found: {type_str}.{name}",
+                code="OBJECT_NOT_FOUND",
+            )
 
         return {
             "name": obj.name,
@@ -342,7 +399,10 @@ class MetadataAttributesTool(BaseTool):
         obj = await self._engine.get_object(metadata_type, name)
 
         if obj is None:
-            return {"error": f"Object not found: {type_str}.{name}"}
+            raise ToolError(
+                f"Object not found: {type_str}.{name}",
+                code="OBJECT_NOT_FOUND",
+            )
 
         result: dict[str, Any] = {
             "object": obj.full_name,
@@ -427,7 +487,10 @@ class MetadataFormsTool(BaseTool):
         obj = await self._engine.get_object(metadata_type, name)
 
         if obj is None:
-            return {"error": f"Object not found: {type_str}.{name}"}
+            raise ToolError(
+                f"Object not found: {type_str}.{name}",
+                code="OBJECT_NOT_FOUND",
+            )
 
         return {
             "object": obj.full_name,
@@ -478,7 +541,10 @@ class MetadataTemplatesTool(BaseTool):
         obj = await self._engine.get_object(metadata_type, name)
 
         if obj is None:
-            return {"error": f"Object not found: {type_str}.{name}"}
+            raise ToolError(
+                f"Object not found: {type_str}.{name}",
+                code="OBJECT_NOT_FOUND",
+            )
 
         return {
             "object": obj.full_name,
@@ -522,7 +588,10 @@ class MetadataRegistersTool(BaseTool):
         obj = await self._engine.get_object(MetadataType.DOCUMENT, doc_name)
 
         if obj is None:
-            return {"error": f"Document not found: {doc_name}"}
+            raise ToolError(
+                f"Document not found: {doc_name}",
+                code="OBJECT_NOT_FOUND",
+            )
 
         return {
             "document": obj.full_name,
@@ -567,7 +636,10 @@ class MetadataReferencesTool(BaseTool):
         obj = await self._engine.get_object(metadata_type, name)
 
         if obj is None:
-            return {"error": f"Object not found: {type_str}.{name}"}
+            raise ToolError(
+                f"Object not found: {type_str}.{name}",
+                code="OBJECT_NOT_FOUND",
+            )
 
         return {
             "object": obj.full_name,

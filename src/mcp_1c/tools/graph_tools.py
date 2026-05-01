@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any, ClassVar
 
 from mcp_1c.domain.graph import RelationshipType
+from mcp_1c.engines.code import CodeEngine
 from mcp_1c.engines.knowledge_graph.engine import KnowledgeGraphEngine
 from mcp_1c.engines.metadata.engine import MetadataEngine
 from mcp_1c.tools.base import BaseTool, ToolError
@@ -21,22 +22,35 @@ class GraphBuildTool(BaseTool):
     description: ClassVar[str] = (
         "Построить (или перестроить) граф знаний из метаданных конфигурации. "
         "Анализирует все объекты метаданных, извлекает связи между ними "
-        "(ссылки реквизитов, движения документов, подсистемы и т.д.) "
-        "и сохраняет граф для последующих запросов."
+        "(ссылки реквизитов, движения документов, подсистемы и т.д.). "
+        "Если include_code=true (по умолчанию), дополнительно анализирует "
+        "BSL-модули и добавляет рёбра уровня кода (вызовы процедур, "
+        "ссылки на метаданные из кода, таблицы из запросов)."
     )
     input_schema: ClassVar[dict[str, Any]] = {
         "type": "object",
-        "properties": {},
+        "properties": {
+            "include_code": {
+                "type": "boolean",
+                "description": (
+                    "Включать ли рёбра уровня кода (procedure_call, "
+                    "code_metadata_reference). По умолчанию true."
+                ),
+                "default": True,
+            },
+        },
     }
 
     def __init__(
         self,
         kg_engine: KnowledgeGraphEngine,
         metadata_engine: MetadataEngine,
+        code_engine: CodeEngine | None = None,
     ) -> None:
         super().__init__()
         self._kg_engine = kg_engine
         self._metadata_engine = metadata_engine
+        self._code_engine = code_engine
 
     async def execute(self, arguments: dict[str, Any]) -> Any:
         """Build the knowledge graph."""
@@ -46,12 +60,17 @@ class GraphBuildTool(BaseTool):
                 code="NOT_INITIALIZED",
             )
 
-        graph = await self._kg_engine.build(self._metadata_engine)
+        include_code = arguments.get("include_code", True)
+        code_engine = self._code_engine if include_code else None
+        graph = await self._kg_engine.build(
+            self._metadata_engine, code_engine=code_engine
+        )
         stats = graph.stats()
 
         return {
             "status": "success",
             "message": "Граф знаний успешно построен",
+            "include_code": include_code and code_engine is not None,
             "statistics": stats,
         }
 
@@ -89,10 +108,53 @@ class GraphImpactTool(BaseTool):
         self._kg_engine = kg_engine
 
     async def execute(self, arguments: dict[str, Any]) -> Any:
-        """Run impact analysis."""
+        """Run impact analysis.
+
+        Augments the standard impact result with
+        ``overridden_by_extensions`` — extensions that contribute an
+        Adopted/Replaced object pointing at this node. Critical for 1С
+        refactor decisions: editing a typical-config object that an
+        extension has заимствовал must be done via Designer, not via
+        the file the developer is looking at.
+        """
         node_id = arguments["node_id"]
         depth = arguments.get("depth", 3)
-        return await self._kg_engine.get_impact(node_id, depth)
+        result = await self._kg_engine.get_impact(node_id, depth)
+        if isinstance(result, dict):
+            overrides = await self._collect_extension_overrides(node_id)
+            if overrides:
+                result["overridden_by_extensions"] = overrides
+        return result
+
+    async def _collect_extension_overrides(
+        self, node_id: str
+    ) -> list[dict[str, Any]]:
+        """Find ExtensionObject nodes that adopt or replace ``node_id``.
+
+        Walks incoming EXTENSION_ADOPTS and EXTENSION_REPLACES edges and
+        returns a flat list ``[{extension, mode, object}]``. Empty list
+        when nothing overrides the target.
+        """
+        from mcp_1c.domain.graph import RelationshipType
+
+        graph = await self._kg_engine._load_or_fail()  # noqa: SLF001
+        overrides: list[dict[str, Any]] = []
+        for rel in (
+            RelationshipType.EXTENSION_ADOPTS,
+            RelationshipType.EXTENSION_REPLACES,
+        ):
+            for edge, neighbor in graph.get_related(
+                node_id, relationship=rel, direction="incoming"
+            ):
+                overrides.append(
+                    {
+                        "extension": neighbor.metadata.get("extension", ""),
+                        "mode": neighbor.metadata.get("mode", ""),
+                        "object": neighbor.id,
+                        "edge_label": edge.label,
+                    }
+                )
+        return overrides
 
 
 class GraphRelatedTool(BaseTool):
@@ -139,11 +201,11 @@ class GraphRelatedTool(BaseTool):
         if rel_str:
             try:
                 relationship = RelationshipType(rel_str)
-            except ValueError:
+            except ValueError as exc:
                 raise ToolError(
                     f"Неизвестный тип связи: {rel_str}",
                     code="INVALID_RELATIONSHIP",
-                )
+                ) from exc
 
         related = await self._kg_engine.get_related(node_id, relationship)
         return {
@@ -243,6 +305,170 @@ class GraphStatsTool(BaseTool):
         super().__init__()
         self._kg_engine = kg_engine
 
-    async def execute(self, arguments: dict[str, Any]) -> Any:
+    async def execute(self, arguments: dict[str, Any]) -> Any:  # noqa: ARG002
         """Get graph stats."""
         return await self._kg_engine.get_stats()
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Code-level edges (Phase 1)
+# ─────────────────────────────────────────────────────────────────────────
+
+
+class GraphCallersTool(BaseTool):
+    """Find every procedure that calls a given one.
+
+    Walks ``PROCEDURE_CALL`` edges in the *incoming* direction. Cross-
+    module call resolution is best-effort (see
+    ``KnowledgeGraphEngine._resolve_global_procedure``) — ambiguous
+    names produce no edge rather than a wrong edge. Same-module calls
+    are deterministic.
+    """
+
+    name: ClassVar[str] = "graph-callers"
+    description: ClassVar[str] = (
+        "Найти все процедуры, вызывающие указанную. "
+        "Работает по графу вызовов BSL — требует, чтобы граф был "
+        "построен с code_engine. Идентификатор процедуры в формате "
+        "'Тип.Имя.МодульныйТип.ИмяПроцедуры', например "
+        "'CommonModule.ОбщегоНазначения.Module.СообщениеПользователю'."
+    )
+    input_schema: ClassVar[dict[str, Any]] = {
+        "type": "object",
+        "properties": {
+            "node_id": {
+                "type": "string",
+                "description": "Идентификатор процедуры в KG",
+            },
+        },
+        "required": ["node_id"],
+    }
+
+    def __init__(self, kg_engine: KnowledgeGraphEngine) -> None:
+        super().__init__()
+        self._kg_engine = kg_engine
+
+    async def execute(self, arguments: dict[str, Any]) -> Any:
+        from mcp_1c.domain.graph import RelationshipType
+
+        node_id = arguments["node_id"]
+        graph = await self._kg_engine._load_or_fail()  # noqa: SLF001
+        callers = [
+            {
+                "node_id": neighbor.id,
+                "owner": neighbor.metadata.get("owner", ""),
+                "name": neighbor.name,
+                "line": edge.metadata.get("line"),
+            }
+            for edge, neighbor in graph.get_related(
+                node_id,
+                relationship=RelationshipType.PROCEDURE_CALL,
+                direction="incoming",
+            )
+        ]
+        return {"node_id": node_id, "count": len(callers), "callers": callers}
+
+
+class GraphCalleesTool(BaseTool):
+    """List every procedure called from a given one."""
+
+    name: ClassVar[str] = "graph-callees"
+    description: ClassVar[str] = (
+        "Найти все процедуры, которые вызывает указанная процедура. "
+        "Зеркально к graph-callers."
+    )
+    input_schema: ClassVar[dict[str, Any]] = {
+        "type": "object",
+        "properties": {
+            "node_id": {
+                "type": "string",
+                "description": "Идентификатор процедуры в KG",
+            },
+        },
+        "required": ["node_id"],
+    }
+
+    def __init__(self, kg_engine: KnowledgeGraphEngine) -> None:
+        super().__init__()
+        self._kg_engine = kg_engine
+
+    async def execute(self, arguments: dict[str, Any]) -> Any:
+        from mcp_1c.domain.graph import RelationshipType
+
+        node_id = arguments["node_id"]
+        graph = await self._kg_engine._load_or_fail()  # noqa: SLF001
+        callees = [
+            {
+                "node_id": neighbor.id,
+                "owner": neighbor.metadata.get("owner", ""),
+                "name": neighbor.name,
+                "line": edge.metadata.get("line"),
+            }
+            for edge, neighbor in graph.get_related(
+                node_id,
+                relationship=RelationshipType.PROCEDURE_CALL,
+                direction="outgoing",
+            )
+        ]
+        return {"node_id": node_id, "count": len(callees), "callees": callees}
+
+
+class GraphCodeReferencesTool(BaseTool):
+    """Find every procedure that references a metadata object from BSL code.
+
+    Aggregates two edge kinds: explicit metadata access
+    (``Справочники.X``, ``CODE_METADATA_REFERENCE``) and queries that
+    pull from the object's table (``CODE_QUERY_REFERENCE``).
+    """
+
+    name: ClassVar[str] = "graph-code-references"
+    description: ClassVar[str] = (
+        "Найти все процедуры, которые ссылаются на объект метаданных "
+        "из кода — через Справочники.Х, ВЫБРАТЬ ИЗ Справочник.Х и т.п. "
+        "Помогает оценить blast-radius при переименовании/удалении."
+    )
+    input_schema: ClassVar[dict[str, Any]] = {
+        "type": "object",
+        "properties": {
+            "node_id": {
+                "type": "string",
+                "description": (
+                    "Идентификатор объекта метаданных, напр. 'Catalog.Номенклатура'"
+                ),
+            },
+        },
+        "required": ["node_id"],
+    }
+
+    def __init__(self, kg_engine: KnowledgeGraphEngine) -> None:
+        super().__init__()
+        self._kg_engine = kg_engine
+
+    async def execute(self, arguments: dict[str, Any]) -> Any:
+        from mcp_1c.domain.graph import RelationshipType
+
+        node_id = arguments["node_id"]
+        graph = await self._kg_engine._load_or_fail()  # noqa: SLF001
+        references = []
+        for rel in (
+            RelationshipType.CODE_METADATA_REFERENCE,
+            RelationshipType.CODE_QUERY_REFERENCE,
+        ):
+            for edge, neighbor in graph.get_related(
+                node_id, relationship=rel, direction="incoming"
+            ):
+                references.append(
+                    {
+                        "procedure": neighbor.id,
+                        "owner": neighbor.metadata.get("owner", ""),
+                        "name": neighbor.name,
+                        "kind": rel.value,
+                        "line": edge.metadata.get("line"),
+                        "label": edge.label,
+                    }
+                )
+        return {
+            "node_id": node_id,
+            "count": len(references),
+            "references": references,
+        }

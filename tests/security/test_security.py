@@ -7,7 +7,6 @@ from lxml import etree
 
 from mcp_1c.tools.base import ToolError, parse_metadata_type
 
-
 # ---------------------------------------------------------------------------
 # XXE Protection
 # ---------------------------------------------------------------------------
@@ -77,7 +76,7 @@ class TestXXEProtection:
             return  # Raising is acceptable
 
         # If it parsed, /etc/passwd contents must not appear in any value
-        for type_name, names in result.items():
+        for names in result.values():
             for name in names:
                 assert "root:" not in name, "XXE entity was resolved!"
 
@@ -102,6 +101,71 @@ class TestXXEProtection:
             for cell in result.document.header_cells:
                 assert "root:" not in cell.text, "XXE entity was resolved in MXL!"
         # Failure is also acceptable (parser rejects the DTD)
+
+    @pytest.mark.parametrize(
+        "module_path",
+        [
+            "mcp_1c.engines.forms.parser",
+            "mcp_1c.engines.extensions.parser",
+            "mcp_1c.engines.composition.parser",
+        ],
+    )
+    def test_all_secure_parsers_block_entity_resolution(self, module_path: str) -> None:
+        """Every parser exposing _SECURE_PARSER must use the hardened factory."""
+        import importlib
+
+        module = importlib.import_module(module_path)
+        secure_parser = module._SECURE_PARSER
+
+        xxe_xml = b"""<?xml version="1.0"?>
+<!DOCTYPE foo [
+  <!ENTITY xxe SYSTEM "file:///etc/hostname">
+]>
+<Root>&xxe;</Root>"""
+        try:
+            tree = etree.fromstring(xxe_xml, secure_parser)
+        except etree.XMLSyntaxError:
+            return
+        text = tree.text or ""
+        assert text == "", f"{module_path} resolved entity to: {text!r}"
+
+    def test_safe_xml_parser_factory_returns_hardened_instance(self) -> None:
+        """The shared factory must produce a parser that ignores DTD entities."""
+        from mcp_1c.utils.xml import safe_xml_parser
+
+        parser = safe_xml_parser()
+        xxe_xml = b"""<?xml version="1.0"?>
+<!DOCTYPE foo [
+  <!ENTITY xxe SYSTEM "file:///etc/hostname">
+]>
+<Root>&xxe;</Root>"""
+        try:
+            tree = etree.fromstring(xxe_xml, parser)
+        except etree.XMLSyntaxError:
+            return
+        text = tree.text or ""
+        assert text == "", f"safe_xml_parser resolved entity to: {text!r}"
+
+    def test_billion_laughs_dos_blocked(self) -> None:
+        """DTD-based exponential entity expansion must be blocked."""
+        from mcp_1c.utils.xml import safe_xml_parser
+
+        parser = safe_xml_parser()
+        bomb = b"""<?xml version="1.0"?>
+<!DOCTYPE lolz [
+  <!ENTITY lol "lol">
+  <!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+  <!ENTITY lol3 "&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;">
+  <!ENTITY lol4 "&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;">
+]>
+<lolz>&lol4;</lolz>"""
+        try:
+            tree = etree.fromstring(bomb, parser)
+        except etree.XMLSyntaxError:
+            return
+        # If it parsed, the entities were not actually expanded
+        text = tree.text or ""
+        assert "lol" not in text, "DTD entity expansion was not blocked"
 
 
 # ---------------------------------------------------------------------------

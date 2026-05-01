@@ -5,13 +5,13 @@ Monitors configuration directory and triggers re-indexing on changes.
 """
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Callable, Awaitable
 
-from watchfiles import awatch, Change
+from watchfiles import Change, awatch
 
-from mcp_1c.domain.metadata import MetadataType
 from mcp_1c.config import WatcherConfig
+from mcp_1c.domain.metadata import MetadataType
 from mcp_1c.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -95,12 +95,15 @@ class ConfigurationWatcher:
         self._task: asyncio.Task | None = None
         self.logger = get_logger(__name__)
 
-    async def start(self, watch_path: Path) -> None:
+    async def start(self, watch_path: Path | list[Path]) -> None:
         """
-        Start watching directory.
+        Start watching one or more directories.
 
         Args:
-            watch_path: Directory to watch
+            watch_path: Directory (legacy, single Path) or list of
+                directories to watch. ``watchfiles.awatch`` natively
+                accepts multiple paths in one subscription, so multi-
+                root indexing (Phase F3) just hands the list through.
         """
         if not self.config.enabled:
             self.logger.info("File watching disabled")
@@ -110,9 +113,18 @@ class ConfigurationWatcher:
             self.logger.warning("Watcher already running")
             return
 
+        paths = (
+            list(watch_path)
+            if isinstance(watch_path, (list, tuple))
+            else [watch_path]
+        )
+        if not paths:
+            self.logger.warning("Watcher start called with empty path list")
+            return
+
         self._running = True
-        self._task = asyncio.create_task(self._watch_loop(watch_path))
-        self.logger.info(f"Started watching: {watch_path}")
+        self._task = asyncio.create_task(self._watch_loop(paths))
+        self.logger.info(f"Started watching: {[str(p) for p in paths]}")
 
     async def stop(self) -> None:
         """Stop watching."""
@@ -126,16 +138,18 @@ class ConfigurationWatcher:
             self._task = None
         self.logger.info("Watcher stopped")
 
-    async def _watch_loop(self, watch_path: Path) -> None:
+    async def _watch_loop(self, watch_paths: list[Path]) -> None:
         """
         Main watch loop.
 
         Args:
-            watch_path: Directory to watch
+            watch_paths: Directories to watch. ``awatch`` accepts a
+                varargs of paths and multiplexes them into one event
+                stream.
         """
         try:
             async for changes in awatch(
-                watch_path,
+                *watch_paths,
                 debounce=self.config.debounce_ms,
                 recursive=True,
             ):

@@ -884,10 +884,10 @@ class TestRegistryCompleteness:
 
     @pytest.mark.asyncio
     async def test_tool_count(self, tool_registry: ToolRegistry) -> None:
-        """Registry should have exactly 38 tools."""
+        """38 core + 8 gen + 3 form + 4 skd + 3 ext + 4 bsp + 5 runtime + 2 premium = 67."""
         tools = tool_registry.list_tools()
-        assert len(tools) == 38, (
-            f"Expected 38 tools, got {len(tools)}: {sorted(t.name for t in tools)}"
+        assert len(tools) == 67, (
+            f"Expected 67 tools, got {len(tools)}: {sorted(t.name for t in tools)}"
         )
 
     @pytest.mark.asyncio

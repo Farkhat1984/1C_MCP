@@ -3,9 +3,40 @@ XML Parser for 1C configuration files.
 
 Parses Configuration.xml and metadata object XML files.
 Uses lxml for efficient XML processing.
+
+Two layouts supported:
+
+1. **Configurator/V8** export (legacy, used by УТ/ERP/БП/ЗУП when
+   exported through "Выгрузить в файлы"):
+   ::
+
+       <root>/
+         Configuration.xml
+         Catalogs/<Name>/<Name>.xml + <Name>/Ext/ObjectModule.bsl
+         CommonModules/<Name>/<Name>.xml + <Name>/Ext/Module.bsl
+         ...
+
+2. **EDT** (1C:Enterprise Development Tools, Eclipse-based):
+   ::
+
+       <root>/
+         Configuration/
+           Configuration.mdo
+         src/
+           Catalogs/<Name>.catalog/<Name>.mdo + <Name>.catalog/Module.bsl
+           CommonModules/<Name>.cmm/<Name>.mdo + <Name>.cmm/Module.bsl
+           ...
+
+Detection happens once at the top of :meth:`parse_configuration`. Both
+layouts use the same XML schema inside the files; only the path
+resolution differs. We model the difference via a pair of helpers
+(``_resolve_layout`` + ``_object_xml_for_type``) so adding a new
+layout means adding one ``LayoutKind`` and its path-rules, not
+duplicating the parsing logic.
 """
 
 import hashlib
+from enum import StrEnum
 from pathlib import Path
 
 from lxml import etree
@@ -22,16 +53,12 @@ from mcp_1c.domain.metadata import (
     Template,
 )
 from mcp_1c.utils.logger import get_logger
+from mcp_1c.utils.xml import safe_xml_parser
 
 logger = get_logger(__name__)
 
-# Secure XML parser — prevents XXE attacks
-_SECURE_PARSER = etree.XMLParser(
-    resolve_entities=False,
-    no_network=True,
-    dtd_validation=False,
-    load_dtd=False,
-)
+# Hardened XML parser shared across this module — see utils.xml for rationale.
+_SECURE_PARSER = safe_xml_parser()
 
 # 1C XML namespaces
 NAMESPACES = {
@@ -39,6 +66,73 @@ NAMESPACES = {
     "core": "http://v8.1c.ru/8.1/data/core",
     "xs": "http://www.w3.org/2001/XMLSchema",
     "xsi": "http://www.w3.org/2001/XMLSchema-instance",
+}
+
+
+class LayoutKind(StrEnum):
+    """Filesystem layout flavours of a 1С configuration export."""
+
+    CONFIGURATOR = "configurator"
+    """Configurator "Выгрузить в файлы" export — the historical layout
+    that the rest of this codebase grew up with."""
+
+    EDT = "edt"
+    """1C:Enterprise Development Tools (Eclipse-based) layout. Uses
+    ``.mdo`` as the metadata file extension and a per-type subdir
+    suffix (``Catalogs/<Name>.catalog/<Name>.mdo``)."""
+
+
+def detect_layout(config_path: Path) -> LayoutKind:
+    """Decide which layout flavour ``config_path`` follows.
+
+    Detection is cheap and unambiguous:
+    - EDT projects always have ``Configuration/Configuration.mdo``
+      and a ``src/`` subdirectory at the root.
+    - Configurator exports always have ``Configuration.xml`` in the
+      root.
+
+    On ambiguity (both present — unlikely but possible during a
+    migration) we prefer EDT because that's the modern direction.
+    Pure ambiguity (neither present) returns Configurator and the
+    caller will surface the missing-file error normally.
+    """
+    edt_marker = config_path / "Configuration" / "Configuration.mdo"
+    if edt_marker.exists():
+        return LayoutKind.EDT
+    return LayoutKind.CONFIGURATOR
+
+
+# Per-type EDT subdirectory suffix. ``Catalogs/<Name>.catalog/<Name>.mdo``
+# means CATALOG → ``.catalog``. Curated to the types we actually parse —
+# adding a new type later requires one entry here. Missing types fall
+# back to ``""`` (no suffix) which works for some peripheral types.
+_EDT_TYPE_SUFFIX: dict[MetadataType, str] = {
+    MetadataType.CATALOG: ".catalog",
+    MetadataType.DOCUMENT: ".document",
+    MetadataType.ENUM: ".enum",
+    MetadataType.REPORT: ".report",
+    MetadataType.DATA_PROCESSOR: ".dataprocessor",
+    MetadataType.INFORMATION_REGISTER: ".informationregister",
+    MetadataType.ACCUMULATION_REGISTER: ".accumulationregister",
+    MetadataType.ACCOUNTING_REGISTER: ".accountingregister",
+    MetadataType.CALCULATION_REGISTER: ".calculationregister",
+    MetadataType.COMMON_MODULE: ".cmm",
+    MetadataType.CONSTANT: ".constant",
+    MetadataType.CHART_OF_ACCOUNTS: ".chartofaccounts",
+    MetadataType.CHART_OF_CHARACTERISTIC_TYPES: ".chartofcharacteristictypes",
+    MetadataType.CHART_OF_CALCULATION_TYPES: ".chartofcalculationtypes",
+    MetadataType.EXCHANGE_PLAN: ".exchangeplan",
+    MetadataType.BUSINESS_PROCESS: ".businessprocess",
+    MetadataType.TASK: ".task",
+    MetadataType.SUBSYSTEM: ".subsystem",
+    MetadataType.ROLE: ".role",
+    MetadataType.HTTP_SERVICE: ".httpservice",
+    MetadataType.WEB_SERVICE: ".webservice",
+    MetadataType.SCHEDULED_JOB: ".scheduledjob",
+    MetadataType.EVENT_SUBSCRIPTION: ".eventsubscription",
+    MetadataType.FUNCTIONAL_OPTION: ".functionaloption",
+    MetadataType.DEFINED_TYPE: ".definedtype",
+    MetadataType.COMMON_ATTRIBUTE: ".commonattribute",
 }
 
 
@@ -58,11 +152,16 @@ class XmlParser:
 
     def parse_configuration(self, config_path: Path) -> dict[str, list[str]]:
         """
-        Parse Configuration.xml to get list of all objects.
+        Parse Configuration metadata to get list of all objects.
 
-        Supports two formats:
-        1. Legacy format: <Catalogs><item>Name</item></Catalogs>
-        2. Configurator export format: <ChildObjects><Catalog>Name</Catalog></ChildObjects>
+        Supports two layouts and two XML structures:
+
+        - **Configurator** export reads ``<root>/Configuration.xml``
+          with either ``<Catalogs><item>Name</item></Catalogs>``
+          (legacy) or ``<ChildObjects><Catalog>Name</Catalog></ChildObjects>``
+          (modern Configurator).
+        - **EDT** export reads ``<root>/Configuration/Configuration.mdo``
+          with the modern ``<ChildObjects>...`` shape.
 
         Args:
             config_path: Path to configuration root
@@ -70,11 +169,19 @@ class XmlParser:
         Returns:
             Dictionary mapping metadata type to list of object names
         """
-        config_xml = config_path / "Configuration.xml"
-        if not config_xml.exists():
-            raise FileNotFoundError(f"Configuration.xml not found at {config_xml}")
+        layout = detect_layout(config_path)
+        if layout == LayoutKind.EDT:
+            config_xml = config_path / "Configuration" / "Configuration.mdo"
+        else:
+            config_xml = config_path / "Configuration.xml"
 
-        self.logger.info(f"Parsing configuration: {config_xml}")
+        if not config_xml.exists():
+            raise FileNotFoundError(
+                f"Configuration metadata not found at {config_xml} "
+                f"(layout={layout.value})"
+            )
+
+        self.logger.info(f"Parsing configuration ({layout.value}): {config_xml}")
 
         tree = etree.parse(str(config_xml), _SECURE_PARSER)
         root = tree.getroot()
@@ -252,11 +359,16 @@ class XmlParser:
         object_name: str,
     ) -> MetadataObject:
         """
-        Parse a specific metadata object XML file.
+        Parse a specific metadata object's metadata file.
 
-        Supports two directory structures:
-        1. Configurator export: TypeFolder/ObjectName.xml + TypeFolder/ObjectName/ (modules)
-        2. Legacy/EDT format: TypeFolder/ObjectName/ObjectName.xml
+        Supports three layouts in priority order:
+
+        1. **Configurator export, modern**: ``<Type>/<Name>/<Name>.xml``
+           with ``<Name>/Ext/`` for modules.
+        2. **Configurator export, legacy**: ``<Type>/<Name>.xml`` next
+           to ``<Type>/<Name>/`` for modules.
+        3. **EDT**: ``src/<Type>/<Name><suffix>/<Name>.mdo`` with the
+           module file as ``Module.bsl`` in the same dir.
 
         Args:
             config_path: Path to configuration root
@@ -266,13 +378,26 @@ class XmlParser:
         Returns:
             Parsed MetadataObject
         """
-        # Determine paths based on type
-        type_folder = self._get_type_folder(metadata_type)
-        type_folder_path = config_path / type_folder
-        object_folder = type_folder_path / object_name  # Folder for modules/forms
+        layout = detect_layout(config_path)
 
-        # Find XML file - try both structures
-        xml_file = self._find_object_xml(type_folder_path, object_folder, object_name)
+        if layout == LayoutKind.EDT:
+            # EDT layout: ``src/<TypeFolder>/<Name><suffix>/<Name>.mdo``
+            # The suffix depends on the type and is curated in
+            # ``_EDT_TYPE_SUFFIX``.
+            type_folder = self._get_type_folder(metadata_type)
+            suffix = _EDT_TYPE_SUFFIX.get(metadata_type, "")
+            object_folder = (
+                config_path / "src" / type_folder / f"{object_name}{suffix}"
+            )
+            xml_file = object_folder / f"{object_name}.mdo"
+        else:
+            # Configurator/legacy layout — historical path resolution.
+            type_folder = self._get_type_folder(metadata_type)
+            type_folder_path = config_path / type_folder
+            object_folder = type_folder_path / object_name
+            xml_file = self._find_object_xml(
+                type_folder_path, object_folder, object_name
+            )
 
         if not xml_file.exists():
             self.logger.warning(f"XML file not found for {metadata_type.value}.{object_name}")

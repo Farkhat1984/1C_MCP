@@ -26,16 +26,11 @@ from mcp_1c.domain.mxl import (
     TemplateParameter,
 )
 from mcp_1c.utils.logger import get_logger
+from mcp_1c.utils.xml import safe_xml_parser
 
 logger = get_logger(__name__)
 
-# Secure XML parser — prevents XXE attacks
-_SECURE_PARSER = etree.XMLParser(
-    resolve_entities=False,
-    no_network=True,
-    dtd_validation=False,
-    load_dtd=False,
-)
+_SECURE_PARSER = safe_xml_parser()
 
 # Namespaces used in 1C XML exports
 NAMESPACES = {

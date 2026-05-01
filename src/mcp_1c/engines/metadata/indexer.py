@@ -10,11 +10,10 @@ import asyncio
 import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import AsyncIterator
 
-from mcp_1c.domain.metadata import MetadataObject, MetadataType, Subsystem
-from mcp_1c.engines.metadata.parser import XmlParser
+from mcp_1c.domain.metadata import MetadataObject, MetadataType
 from mcp_1c.engines.metadata.cache import MetadataCache
+from mcp_1c.engines.metadata.parser import XmlParser
 from mcp_1c.utils.logger import get_logger
 from mcp_1c.utils.profiler import get_profiler
 
@@ -94,6 +93,9 @@ class MetadataIndexer:
         config_path: Path,
         incremental: bool = True,
         parallel: bool = True,
+        *,
+        source: str = "config",
+        progress: IndexProgress | None = None,
     ) -> IndexProgress:
         """
         Index entire configuration.
@@ -102,11 +104,20 @@ class MetadataIndexer:
             config_path: Path to configuration root
             incremental: Only update changed files
             parallel: Use parallel processing
+            source: ``MetadataObject.source`` label applied to every
+                object indexed in this call. ``"config"`` for the main
+                config root, ``"overlay:<name>"`` for a developer
+                overlay tree. Phase F3 multi-root indexing.
+            progress: External ``IndexProgress`` to accumulate into;
+                used by ``MetadataEngine.initialize`` to thread one
+                counter through main-config + overlay calls so the
+                final ``progress`` reflects the entire index.
 
         Returns:
             IndexProgress with statistics
         """
-        progress = IndexProgress()
+        if progress is None:
+            progress = IndexProgress()
 
         self.logger.info(f"Starting indexing: {config_path}")
         self.logger.info(f"Mode: {'incremental' if incremental else 'full'}")
@@ -138,6 +149,7 @@ class MetadataIndexer:
                     objects_by_type,
                     incremental,
                     progress,
+                    source=source,
                 )
             else:
                 # Sequential indexing for small configurations
@@ -146,6 +158,7 @@ class MetadataIndexer:
                     objects_by_type,
                     incremental,
                     progress,
+                    source=source,
                 )
         finally:
             # End batch mode - flush remaining objects
@@ -170,6 +183,8 @@ class MetadataIndexer:
         objects_by_type: dict[str, list[str]],
         incremental: bool,
         progress: IndexProgress,
+        *,
+        source: str = "config",
     ) -> None:
         """Sequential indexing for small configurations."""
         for type_name, object_names in objects_by_type.items():
@@ -182,6 +197,7 @@ class MetadataIndexer:
                         metadata_type,
                         obj_name,
                         incremental,
+                        source=source,
                     )
                     if updated:
                         progress.updated += 1
@@ -207,6 +223,8 @@ class MetadataIndexer:
         objects_by_type: dict[str, list[str]],
         incremental: bool,
         progress: IndexProgress,
+        *,
+        source: str = "config",
     ) -> None:
         """Parallel indexing for large configurations."""
         # Collect all indexing tasks
@@ -221,6 +239,7 @@ class MetadataIndexer:
                     metadata_type,
                     obj_name,
                     incremental,
+                    source=source,
                 )
                 tasks.append((type_name, obj_name, task))
 
@@ -257,6 +276,8 @@ class MetadataIndexer:
         metadata_type: MetadataType,
         object_name: str,
         incremental: bool,
+        *,
+        source: str = "config",
     ) -> bool:
         """Index object with semaphore for concurrency control."""
         async with self._semaphore:
@@ -265,6 +286,7 @@ class MetadataIndexer:
                 metadata_type,
                 object_name,
                 incremental,
+                source=source,
             )
 
     async def _index_object(
@@ -273,6 +295,8 @@ class MetadataIndexer:
         metadata_type: MetadataType,
         object_name: str,
         incremental: bool,
+        *,
+        source: str = "config",
     ) -> bool:
         """
         Index a single object.
@@ -306,6 +330,12 @@ class MetadataIndexer:
                 metadata_type,
                 object_name,
             )
+
+        # Stamp the source label so the cache and graph know where this
+        # object came from. Default ``"config"`` matches the legacy
+        # behaviour for single-root deploys.
+        if obj is not None:
+            obj.source = source
 
         async with profiler.measure("indexer.save_object"):
             await self.cache.save_object(obj)
@@ -416,6 +446,8 @@ class MetadataIndexer:
         config_path: Path,
         metadata_type: MetadataType,
         object_name: str,
+        *,
+        source: str = "config",
     ) -> MetadataObject:
         """
         Index or re-index a single object.
@@ -424,6 +456,11 @@ class MetadataIndexer:
             config_path: Configuration root path
             metadata_type: Object type
             object_name: Object name
+            source: ``MetadataObject.source`` label (Phase F3). Watcher
+                resolves this from the changed file's path before
+                calling — files in an overlay tree get
+                ``"overlay:<name>"`` so re-index doesn't downgrade
+                them to ``"config"``.
 
         Returns:
             Indexed MetadataObject
@@ -433,6 +470,8 @@ class MetadataIndexer:
             metadata_type,
             object_name,
         )
+        if obj is not None:
+            obj.source = source
         await self.cache.save_object(obj)
         return obj
 

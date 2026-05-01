@@ -16,20 +16,26 @@ from mcp_1c.domain.mxl import (
 )
 from collections import OrderedDict
 
+from mcp_1c.config import get_config
 from mcp_1c.engines.mxl.generator import FillCodeGenerator
 from mcp_1c.engines.mxl.parser import MxlParser
 from mcp_1c.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-_MXL_CACHE_MAX_SIZE = 100
-
 
 class _LRUDict(OrderedDict):
-    """Bounded LRU dictionary for sync cache usage."""
+    """Bounded LRU dictionary for sync cache usage.
 
-    def __init__(self, max_size: int = _MXL_CACHE_MAX_SIZE) -> None:
+    Eviction is strictly bounded by ``max_size``: oldest entry is dropped
+    on every insert past the limit. Reads bump recency. Used here instead
+    of ``utils.lru_cache.AsyncLRUCache`` because MXL parsing is sync.
+    """
+
+    def __init__(self, max_size: int) -> None:
         super().__init__()
+        if max_size < 1:
+            raise ValueError(f"max_size must be >= 1, got {max_size}")
         self._max_size = max_size
 
     def __getitem__(self, key: str) -> MxlDocument:
@@ -48,11 +54,18 @@ class _LRUDict(OrderedDict):
 class MxlEngine:
     """High-level engine for MXL template operations."""
 
-    def __init__(self) -> None:
-        """Initialize MXL engine."""
+    def __init__(self, cache_size: int | None = None) -> None:
+        """Initialize MXL engine.
+
+        Args:
+            cache_size: Bound for the parse-result cache. Defaults to
+                ``config.server.mxl_cache_size`` when omitted.
+        """
         self._parser = MxlParser()
         self._generator = FillCodeGenerator()
-        self._cache: _LRUDict = _LRUDict(max_size=_MXL_CACHE_MAX_SIZE)
+        if cache_size is None:
+            cache_size = get_config().server.mxl_cache_size
+        self._cache: _LRUDict = _LRUDict(max_size=cache_size)
 
     def parse_template(
         self, file_path: str | Path, use_cache: bool = True

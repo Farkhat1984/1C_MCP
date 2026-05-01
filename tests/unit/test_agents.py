@@ -48,7 +48,7 @@ class TestExploreAgent:
         content = messages[0].content.text
         assert "C:/1C/Configuration" in content
         assert "metadata-init" in content
-        assert "metadata-tree" in content
+        assert "metadata-list" in content
 
     @pytest.mark.asyncio
     async def test_generate_messages_with_focus(self) -> None:
@@ -186,7 +186,7 @@ class TestConfigureAgent:
         assert len(messages) == 1
         content = messages[0].content.text
         assert "Услуга" in content
-        assert "config-options" in content or "metadata-search" in content
+        assert "config-objects" in content or "metadata-search" in content
 
     @pytest.mark.asyncio
     async def test_generate_messages_with_approach(self) -> None:
