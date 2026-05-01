@@ -4,9 +4,7 @@ Unit tests for Template Engine.
 Tests template loading, code generation, and query parsing.
 """
 
-import pytest
 
-from mcp_1c.engines.templates import TemplateEngine, CodeGenerator, QueryParser
 from mcp_1c.domain.templates import (
     CodeTemplate,
     GenerationContext,
@@ -14,6 +12,7 @@ from mcp_1c.domain.templates import (
     PlaceholderType,
     TemplateCategory,
 )
+from mcp_1c.engines.templates import CodeGenerator, QueryParser, TemplateEngine
 
 
 class TestCodeGenerator:

@@ -162,7 +162,7 @@ class PlatformEngine:
         if not file_path.exists():
             logger.warning(f"JSON file not found: {file_path}")
             return {}
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             return json.load(f)
 
     def _parse_method(self, data: dict[str, Any]) -> PlatformMethod:

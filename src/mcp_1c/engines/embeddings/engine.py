@@ -22,7 +22,6 @@ from mcp_1c.engines.embeddings.chunking import (
     make_chunk_id,
     prepare_metadata_text,
 )
-from mcp_1c.engines.embeddings.client import EmbeddingClient
 from mcp_1c.engines.embeddings.local_client import make_embedding_client
 from mcp_1c.engines.embeddings.storage import VectorStorage
 from mcp_1c.utils.logger import get_logger

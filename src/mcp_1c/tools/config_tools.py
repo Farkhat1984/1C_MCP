@@ -18,7 +18,6 @@ from mcp_1c.domain.metadata import MetadataType
 from mcp_1c.engines.metadata import MetadataEngine
 from mcp_1c.tools.base import BaseTool, ToolError
 
-
 # ---------------------------------------------------------------------------
 # Type-to-MetadataType mapping for the consolidated tool
 # ---------------------------------------------------------------------------

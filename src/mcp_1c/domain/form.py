@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -52,7 +51,7 @@ class FormAttribute(BaseModel):
     title: str = Field(default="", description="Synonym / displayed title")
     main: bool = Field(default=False, description="Main attribute (basic data of the form)")
     save_data: bool = Field(default=False, description="Persist between sessions")
-    columns: list["FormAttribute"] = Field(
+    columns: list[FormAttribute] = Field(
         default_factory=list,
         description="Columns of a tabular attribute (DynamicList/ValueTable)",
     )
@@ -81,7 +80,7 @@ class FormElement(BaseModel):
     visible: bool = True
     enabled: bool = True
     handlers: list[FormEventHandler] = Field(default_factory=list)
-    children: list["FormElement"] = Field(default_factory=list)
+    children: list[FormElement] = Field(default_factory=list)
 
     model_config = ConfigDict(use_enum_values=False)
 

@@ -7,8 +7,9 @@ Provides an async-compatible LRU cache with TTL support.
 import asyncio
 import time
 from collections import OrderedDict
+from collections.abc import Callable, Hashable
 from dataclasses import dataclass
-from typing import Any, Callable, Generic, Hashable, TypeVar
+from typing import Any, Generic, TypeVar
 
 from mcp_1c.utils.logger import get_logger
 

@@ -21,10 +21,10 @@ logger = get_logger(__name__)
 class ExtensionEngine:
     """Singleton engine that locates extensions inside the main config tree."""
 
-    _instance: "ExtensionEngine | None" = None
+    _instance: ExtensionEngine | None = None
 
     @classmethod
-    def get_instance(cls) -> "ExtensionEngine":
+    def get_instance(cls) -> ExtensionEngine:
         if cls._instance is None:
             cls._instance = ExtensionEngine()
         return cls._instance

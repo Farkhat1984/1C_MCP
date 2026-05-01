@@ -9,9 +9,8 @@ Phase 2.3: Validation, linting, formatting, and complexity analysis tools.
 from pathlib import Path
 from typing import Any, ClassVar
 
-from mcp_1c.domain.metadata import MetadataType, ModuleType
-from mcp_1c.engines.code import CodeEngine, DependencyGraphBuilder, BslLanguageServer
-from mcp_1c.engines.metadata import MetadataEngine
+from mcp_1c.domain.metadata import ModuleType
+from mcp_1c.engines.code import BslLanguageServer, CodeEngine, DependencyGraphBuilder
 from mcp_1c.tools.base import BaseTool, ToolError, parse_metadata_type
 
 

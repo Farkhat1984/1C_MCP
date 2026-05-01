@@ -4,12 +4,11 @@ Unit tests for BSL Parser.
 Tests BSL code parsing: procedures, functions, regions, directives.
 """
 
-from pathlib import Path
 
 import pytest
 
-from mcp_1c.engines.code.parser import BslParser
 from mcp_1c.domain.code import CompilationDirective
+from mcp_1c.engines.code.parser import BslParser
 
 
 class TestBslParser:

@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 
-from mcp_1c.domain.code import DependencyEdge, DependencyGraph
+from mcp_1c.domain.code import DependencyGraph
 from mcp_1c.domain.metadata import MetadataType, ModuleType
 from mcp_1c.engines.code.engine import CodeEngine
 from mcp_1c.engines.metadata.engine import MetadataEngine

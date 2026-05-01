@@ -8,7 +8,6 @@ import pytest
 
 from mcp_1c.tools.diff_tools import ConfigurationDiffTool
 
-
 SIMPLE_CONFIG_LEFT = """<?xml version="1.0" encoding="UTF-8"?>
 <MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses">
   <Configuration>

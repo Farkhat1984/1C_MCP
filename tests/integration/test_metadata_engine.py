@@ -10,8 +10,8 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 
-from mcp_1c.engines.metadata.engine import MetadataEngine
 from mcp_1c.domain.metadata import MetadataType
+from mcp_1c.engines.metadata.engine import MetadataEngine
 
 
 class TestMetadataEngineIntegration:

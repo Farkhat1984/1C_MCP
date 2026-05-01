@@ -251,6 +251,17 @@ def create_app(host: str = "127.0.0.1", port: int = 8080) -> Starlette:  # noqa:
         try:
             await registry.initialize()
 
+            # Always initialize the platform engine — it loads from static
+            # JSON bundled in the package (engines/platform/data/) and
+            # never needs a 1C config path. Without this, platform-search
+            # and platform-global_context return "Platform engine not
+            # initialized" on deployments without MCP_CONFIG_PATH.
+            from mcp_1c.tools.platform_tools import PlatformBaseTool
+
+            platform = PlatformBaseTool.get_engine()
+            await platform.initialize()
+            logger.info("Platform engine initialized")
+
             config_path = os.environ.get("MCP_CONFIG_PATH")
             if config_path:
                 from pathlib import Path
@@ -265,12 +276,6 @@ def create_app(host: str = "127.0.0.1", port: int = 8080) -> Starlette:  # noqa:
                 await meta.initialize(Path(config_path), watch=False)
                 meta_stats = await meta.get_stats()
                 logger.info(f"Metadata: {sum(meta_stats.values())} objects")
-
-                from mcp_1c.tools.platform_tools import PlatformBaseTool
-
-                platform = PlatformBaseTool.get_engine()
-                await platform.initialize()
-                logger.info("Platform engine initialized")
 
                 kg = KnowledgeGraphEngine.get_instance()
                 await kg.build(meta)

@@ -12,7 +12,6 @@ from pathlib import Path
 
 from mcp_1c.domain.code import (
     BslModule,
-    CodeLocation,
     CompilationDirective,
     ExtendedBslModule,
     MetadataReference,

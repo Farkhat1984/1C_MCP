@@ -5,15 +5,16 @@ Provides the core MCP server with tool registration and handling.
 """
 
 import signal
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent, Prompt, GetPromptResult
+from mcp.types import GetPromptResult, Prompt, TextContent, Tool
 
 from mcp_1c.config import get_config
-from mcp_1c.tools.registry import ToolRegistry
 from mcp_1c.prompts.registry import PromptRegistry
+from mcp_1c.tools.registry import ToolRegistry
 from mcp_1c.utils.logger import get_logger
 
 logger = get_logger(__name__)

@@ -5,7 +5,6 @@ Models for parsing and representing 1C tabular document templates.
 """
 
 from enum import Enum
-from typing import Any
 
 from pydantic import BaseModel, Field
 

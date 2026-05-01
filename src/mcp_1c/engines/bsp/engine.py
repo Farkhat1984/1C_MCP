@@ -61,10 +61,10 @@ class BspPattern:
 class BspEngine:
     """Singleton facade over the bundled BSP knowledge JSON."""
 
-    _instance: "BspEngine | None" = None
+    _instance: BspEngine | None = None
 
     @classmethod
-    def get_instance(cls) -> "BspEngine":
+    def get_instance(cls) -> BspEngine:
         if cls._instance is None:
             cls._instance = BspEngine()
         return cls._instance

@@ -38,6 +38,15 @@ class GraphBuildTool(BaseTool):
                 ),
                 "default": True,
             },
+            "force": {
+                "type": "boolean",
+                "description": (
+                    "Принудительно перестроить, даже если граф уже построен "
+                    "(по умолчанию: false). Перестройка может занимать "
+                    "минуты на больших конфигурациях."
+                ),
+                "default": False,
+            },
         },
     }
 
@@ -61,6 +70,22 @@ class GraphBuildTool(BaseTool):
             )
 
         include_code = arguments.get("include_code", True)
+        force = arguments.get("force", False)
+
+        # Short-circuit when the graph is already built and the caller
+        # didn't ask for a rebuild — full rebuilds re-walk every BSL
+        # module and can take 10+ minutes on large configurations.
+        if not force and self._kg_engine.is_initialized:
+            stats = await self._kg_engine.get_stats()
+            return {
+                "status": "already_built",
+                "message": (
+                    "Граф уже построен. Используйте force=true для перестройки."
+                ),
+                "include_code": include_code and self._code_engine is not None,
+                "statistics": stats,
+            }
+
         code_engine = self._code_engine if include_code else None
         graph = await self._kg_engine.build(
             self._metadata_engine, code_engine=code_engine

@@ -27,23 +27,23 @@ class PromptRegistry:
     def _register_all_prompts(self) -> None:
         """Register all available prompts."""
         # Import prompts here to avoid circular imports
-        from mcp_1c.prompts.skills import (
-            QuerySkill,
-            MetadataSkill,
-            HandlerSkill,
-            PrintSkill,
-            UsagesSkill,
-            ValidateSkill,
-            DepsSkill,
-            MovementSkill,
-            FormatSkill,
-            ExplainSkill,
-        )
         from mcp_1c.prompts.agents import (
+            ConfigureAgent,
+            DebugAgent,
             ExploreAgent,
             ImplementAgent,
-            DebugAgent,
-            ConfigureAgent,
+        )
+        from mcp_1c.prompts.skills import (
+            DepsSkill,
+            ExplainSkill,
+            FormatSkill,
+            HandlerSkill,
+            MetadataSkill,
+            MovementSkill,
+            PrintSkill,
+            QuerySkill,
+            UsagesSkill,
+            ValidateSkill,
         )
 
         # Register all skills

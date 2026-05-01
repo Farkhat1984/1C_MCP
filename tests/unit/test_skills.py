@@ -4,19 +4,18 @@ Unit tests for Skills (prompts).
 
 import pytest
 
-from mcp_1c.prompts.base import BasePrompt
 from mcp_1c.prompts.registry import PromptRegistry
 from mcp_1c.prompts.skills import (
-    QuerySkill,
-    MetadataSkill,
+    DepsSkill,
+    ExplainSkill,
+    FormatSkill,
     HandlerSkill,
+    MetadataSkill,
+    MovementSkill,
     PrintSkill,
+    QuerySkill,
     UsagesSkill,
     ValidateSkill,
-    DepsSkill,
-    MovementSkill,
-    FormatSkill,
-    ExplainSkill,
 )
 
 

@@ -8,7 +8,6 @@ import tempfile
 from pathlib import Path
 from typing import Any, ClassVar
 
-from mcp_1c.domain.templates import GenerationContext, TemplateCategory
 from mcp_1c.engines.code.bsl_ls import BslLanguageServer
 from mcp_1c.engines.templates import get_template_engine
 from mcp_1c.tools.base import BaseTool

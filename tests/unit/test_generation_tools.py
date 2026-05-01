@@ -7,20 +7,9 @@ Tests generate.*, query.*, and pattern.* tools.
 import pytest
 
 from mcp_1c.tools.generate_tools import (
-    GenerateApiTool,
     GenerateHandlerTool,
     GenerateMovementTool,
-    GeneratePrintTool,
     GenerateQueryTool,
-    GenerateScheduledJobTool,
-    GenerateSubscriptionTool,
-)
-from mcp_1c.tools.query_tools import (
-    QueryExplainTool,
-    QueryOptimizeTool,
-    QueryParseTool,
-    QueryTablesTool,
-    QueryValidateTool,
 )
 from mcp_1c.tools.pattern_tools import (
     PatternApplyTool,
@@ -28,6 +17,13 @@ from mcp_1c.tools.pattern_tools import (
     PatternListTool,
     PatternSearchTool,
     PatternSuggestTool,
+)
+from mcp_1c.tools.query_tools import (
+    QueryExplainTool,
+    QueryOptimizeTool,
+    QueryParseTool,
+    QueryTablesTool,
+    QueryValidateTool,
 )
 
 

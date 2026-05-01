@@ -98,6 +98,14 @@ class CodeDeadCodeTool(BaseTool):
                 "description": "Включать экспортные процедуры (по умолчанию: false)",
                 "default": False,
             },
+            "limit": {
+                "type": "integer",
+                "description": (
+                    "Максимум BSL-файлов для анализа (по умолчанию 200). "
+                    "Используйте metadata_type для точного фильтра."
+                ),
+                "default": 200,
+            },
         },
     }
 
@@ -112,6 +120,7 @@ class CodeDeadCodeTool(BaseTool):
         """Detect dead code across BSL files."""
         metadata_type_filter = arguments.get("metadata_type")
         include_exports = arguments.get("include_exports", False)
+        limit = arguments.get("limit", 200)
 
         config_path = self._metadata_engine.config_path
         if config_path is None:
@@ -124,6 +133,16 @@ class CodeDeadCodeTool(BaseTool):
         bsl_files = self._collect_bsl_files(config_path, metadata_type_filter)
         if not bsl_files:
             return {"dead_code": [], "total_procedures": 0, "dead_count": 0}
+
+        # Cap the number of files analyzed — the QGA-class configurations
+        # carry 5000+ BSL files and a full scan takes 800+ seconds. The
+        # caller can lift the cap or narrow with metadata_type.
+        total_files_found = len(bsl_files)
+        if limit and total_files_found > limit:
+            bsl_files = bsl_files[:limit]
+            was_limited = True
+        else:
+            was_limited = False
 
         # Build combined dependency graph across all files
         builder = DependencyGraphBuilder()
@@ -202,6 +221,9 @@ class CodeDeadCodeTool(BaseTool):
             ),
             "dead_count": len(dead_code),
             "files_analyzed": len(bsl_files),
+            "total_files_found": total_files_found,
+            "was_limited": was_limited,
+            "limit": limit,
         }
 
     def _collect_bsl_files(

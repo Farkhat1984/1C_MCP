@@ -4,13 +4,12 @@ Performance profiling utilities.
 Provides decorators and context managers for measuring execution time.
 """
 
-import asyncio
 import functools
 import time
-from collections import defaultdict
+from collections.abc import Callable
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from mcp_1c.utils.logger import get_logger
 

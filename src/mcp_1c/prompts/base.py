@@ -5,7 +5,7 @@ Implements the Template Method pattern for consistent prompt handling.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar
+from typing import ClassVar
 
 from mcp.types import Prompt, PromptArgument, PromptMessage, TextContent
 

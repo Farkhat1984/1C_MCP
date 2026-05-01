@@ -317,7 +317,7 @@ class BslLanguageServer:
 
                 return ValidationResult(valid=True, file_path=file_path)
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return ValidationResult(
                 valid=False,
                 error_count=1,

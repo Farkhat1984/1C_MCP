@@ -5,8 +5,8 @@ Provides test fixtures for unit and integration tests.
 """
 
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 

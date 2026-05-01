@@ -34,7 +34,7 @@ class RuntimeConfig(BaseModel):
         return bool(self.base_url and self.token)
 
     @classmethod
-    def from_env(cls) -> "RuntimeConfig":
+    def from_env(cls) -> RuntimeConfig:
         return cls(
             base_url=os.environ.get("MCP_RUNTIME_BASE_URL", ""),
             token=os.environ.get("MCP_RUNTIME_TOKEN", ""),
@@ -46,10 +46,10 @@ class RuntimeConfig(BaseModel):
 class RuntimeEngine:
     """Singleton runtime engine. Lazily creates a RuntimeClient on first use."""
 
-    _instance: "RuntimeEngine | None" = None
+    _instance: RuntimeEngine | None = None
 
     @classmethod
-    def get_instance(cls) -> "RuntimeEngine":
+    def get_instance(cls) -> RuntimeEngine:
         if cls._instance is None:
             cls._instance = RuntimeEngine()
         return cls._instance

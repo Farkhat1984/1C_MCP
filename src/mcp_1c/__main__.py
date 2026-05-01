@@ -10,7 +10,7 @@ import asyncio
 import sys
 
 from mcp_1c.server import create_server, run_server
-from mcp_1c.utils.logger import setup_logging, get_logger
+from mcp_1c.utils.logger import get_logger, setup_logging
 
 
 def main() -> int:

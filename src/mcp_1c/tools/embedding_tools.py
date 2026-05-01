@@ -7,10 +7,9 @@ using vector embeddings.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, ClassVar
 
-from mcp_1c.config import EmbeddingConfig, get_config
+from mcp_1c.config import EmbeddingConfig
 from mcp_1c.engines.code import CodeEngine
 from mcp_1c.engines.embeddings import EmbeddingEngine
 from mcp_1c.engines.metadata import MetadataEngine

@@ -5,14 +5,14 @@ Tests indexing operations and cache population.
 """
 
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mcp_1c.engines.metadata.indexer import MetadataIndexer, IndexProgress
-from mcp_1c.engines.metadata.parser import XmlParser
+from mcp_1c.domain.metadata import MetadataObject, MetadataType
 from mcp_1c.engines.metadata.cache import MetadataCache
-from mcp_1c.domain.metadata import MetadataType, MetadataObject
+from mcp_1c.engines.metadata.indexer import IndexProgress, MetadataIndexer
+from mcp_1c.engines.metadata.parser import XmlParser
 
 
 class TestIndexProgress:

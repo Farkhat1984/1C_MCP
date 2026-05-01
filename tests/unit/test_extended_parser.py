@@ -5,11 +5,11 @@ Tests method call extraction, metadata reference detection,
 query extraction, and variable usage analysis.
 """
 
-import pytest
-from pathlib import Path
 
-from mcp_1c.engines.code.parser import BslParser
+import pytest
+
 from mcp_1c.domain.code import MetadataReferenceType
+from mcp_1c.engines.code.parser import BslParser
 
 
 @pytest.fixture

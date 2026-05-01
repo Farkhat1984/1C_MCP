@@ -10,12 +10,11 @@ import time
 from pathlib import Path
 
 import pytest
-import pytest_asyncio
 
+from mcp_1c.engines.code.engine import _REGEX_CACHE, _get_pattern
 from mcp_1c.engines.metadata.engine import MetadataEngine
 from mcp_1c.engines.metadata.parser import XmlParser
 from mcp_1c.engines.mxl.engine import _LRUDict
-from mcp_1c.engines.code.engine import _get_pattern, _REGEX_CACHE
 from mcp_1c.engines.platform.engine import PlatformEngine
 
 
@@ -149,8 +148,8 @@ class TestCachePerformance:
 
         assert len(cache) == 10
         # Most recent keys should be present
-        assert f"key_99" in cache
-        assert f"key_98" in cache
+        assert "key_99" in cache
+        assert "key_98" in cache
         # Oldest keys should be evicted
         assert "key_0" not in cache
         assert "key_89" not in cache

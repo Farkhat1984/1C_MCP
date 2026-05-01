@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from mcp_1c.engines.metadata.parser import XmlParser
 from mcp_1c.domain.metadata import MetadataType
+from mcp_1c.engines.metadata.parser import XmlParser
 
 
 class TestXmlParser:

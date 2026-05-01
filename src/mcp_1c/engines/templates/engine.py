@@ -17,8 +17,8 @@ from mcp_1c.domain.templates import (
     TemplateCategory,
     TemplateSuggestion,
 )
-from mcp_1c.engines.templates.loader import TemplateLoader
 from mcp_1c.engines.templates.generator import CodeGenerator
+from mcp_1c.engines.templates.loader import TemplateLoader
 from mcp_1c.engines.templates.query_parser import QueryParser
 from mcp_1c.utils.logger import get_logger
 

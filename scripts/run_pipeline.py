@@ -31,7 +31,6 @@ from mcp_1c.engines.code.engine import CodeEngine
 from mcp_1c.engines.embeddings.engine import EmbeddingEngine
 from mcp_1c.engines.knowledge_graph.engine import KnowledgeGraphEngine
 from mcp_1c.engines.metadata.engine import MetadataEngine
-from mcp_1c.engines.platform.engine import PlatformEngine
 from mcp_1c.utils.logger import get_logger
 
 logger = get_logger("pipeline")

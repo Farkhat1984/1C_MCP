@@ -4,13 +4,13 @@ Unit tests for Agents (complex prompts).
 
 import pytest
 
-from mcp_1c.prompts.registry import PromptRegistry
 from mcp_1c.prompts.agents import (
+    ConfigureAgent,
+    DebugAgent,
     ExploreAgent,
     ImplementAgent,
-    DebugAgent,
-    ConfigureAgent,
 )
+from mcp_1c.prompts.registry import PromptRegistry
 
 
 class TestExploreAgent:

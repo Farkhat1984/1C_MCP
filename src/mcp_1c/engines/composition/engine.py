@@ -23,10 +23,10 @@ logger = get_logger(__name__)
 class CompositionEngine:
     """Singleton engine that resolves and caches DataCompositionSchema parses."""
 
-    _instance: "CompositionEngine | None" = None
+    _instance: CompositionEngine | None = None
 
     @classmethod
-    def get_instance(cls) -> "CompositionEngine":
+    def get_instance(cls) -> CompositionEngine:
         if cls._instance is None:
             cls._instance = CompositionEngine()
         return cls._instance

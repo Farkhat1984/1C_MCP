@@ -56,7 +56,7 @@ class BslReader:
         # Try each encoding
         for encoding in ENCODINGS:
             try:
-                async with aiofiles.open(path, "r", encoding=encoding) as f:
+                async with aiofiles.open(path, encoding=encoding) as f:
                     content = await f.read()
                     self.logger.debug(f"Read {path} with encoding {encoding}")
                     return content
@@ -124,7 +124,7 @@ class BslReader:
 
         for encoding in ENCODINGS:
             try:
-                with open(path, "r", encoding=encoding) as f:
+                with open(path, encoding=encoding) as f:
                     return f.read()
             except UnicodeDecodeError:
                 continue

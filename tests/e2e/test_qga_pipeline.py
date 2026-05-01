@@ -17,13 +17,11 @@ import pytest
 import pytest_asyncio
 
 from mcp_1c.config import EmbeddingConfig, get_config
-from mcp_1c.domain.graph import RelationshipType
 from mcp_1c.domain.metadata import MetadataType
 from mcp_1c.engines.code.engine import CodeEngine
 from mcp_1c.engines.embeddings.engine import EmbeddingEngine
 from mcp_1c.engines.knowledge_graph.engine import KnowledgeGraphEngine
 from mcp_1c.engines.metadata.engine import MetadataEngine
-from mcp_1c.engines.platform.engine import PlatformEngine
 
 QGA_CONFIG_PATH = Path("/home/faragj/qga_config/qga")
 

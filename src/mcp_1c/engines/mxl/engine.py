@@ -4,9 +4,11 @@ MXL Engine Facade.
 High-level interface for working with MXL templates.
 """
 
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
+from mcp_1c.config import get_config
 from mcp_1c.domain.mxl import (
     FillCodeGenerationOptions,
     GeneratedFillCode,
@@ -14,9 +16,6 @@ from mcp_1c.domain.mxl import (
     MxlParseResult,
     TemplateParameter,
 )
-from collections import OrderedDict
-
-from mcp_1c.config import get_config
 from mcp_1c.engines.mxl.generator import FillCodeGenerator
 from mcp_1c.engines.mxl.parser import MxlParser
 from mcp_1c.utils.logger import get_logger

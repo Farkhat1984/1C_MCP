@@ -21,10 +21,10 @@ logger = get_logger(__name__)
 class FormEngine:
     """Singleton engine that resolves and caches form structures."""
 
-    _instance: "FormEngine | None" = None
+    _instance: FormEngine | None = None
 
     @classmethod
-    def get_instance(cls) -> "FormEngine":
+    def get_instance(cls) -> FormEngine:
         if cls._instance is None:
             cls._instance = FormEngine()
         return cls._instance

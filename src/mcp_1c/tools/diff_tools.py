@@ -7,13 +7,11 @@ existing MetadataEngine cache so they're cheap to invoke.
 
 from __future__ import annotations
 
-import json
 import random
 from datetime import datetime
 from pathlib import Path
 from typing import Any, ClassVar
 
-from mcp_1c.engines.metadata.cache import MetadataCache
 from mcp_1c.engines.metadata.engine import MetadataEngine
 from mcp_1c.engines.metadata.parser import XmlParser
 from mcp_1c.tools.base import BaseTool, ToolError

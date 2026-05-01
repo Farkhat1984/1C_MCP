@@ -4,12 +4,13 @@ Tests for dependency graph builder (Phase 2).
 Tests graph building, edge creation, and query methods.
 """
 
-import pytest
 from pathlib import Path
 
+import pytest
+
+from mcp_1c.domain.code import CodeLocation, DependencyGraph
 from mcp_1c.engines.code.dependencies import DependencyGraphBuilder
 from mcp_1c.engines.code.parser import BslParser
-from mcp_1c.domain.code import DependencyGraph, CodeLocation
 
 
 @pytest.fixture

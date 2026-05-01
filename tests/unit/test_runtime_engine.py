@@ -3,9 +3,6 @@ without hitting any real network."""
 
 from __future__ import annotations
 
-import os
-from typing import Any
-
 import pytest
 
 from mcp_1c.engines.runtime.client import RuntimeClientError

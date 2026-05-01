@@ -4,17 +4,6 @@ Domain models for MCP-1C.
 Contains Pydantic models representing 1C:Enterprise metadata objects.
 """
 
-from mcp_1c.domain.metadata import (
-    Attribute,
-    Form,
-    MetadataObject,
-    MetadataType,
-    Module,
-    ModuleType,
-    Subsystem,
-    TabularSection,
-    Template,
-)
 from mcp_1c.domain.code import (
     BslModule,
     CodeLocation,
@@ -32,21 +21,21 @@ from mcp_1c.domain.code import (
     Region,
     VariableUsage,
 )
-from mcp_1c.domain.templates import (
-    CodeTemplate,
-    GenerationContext,
-    GenerationResult,
-    ParsedQuery,
-    Placeholder,
-    PlaceholderType,
-    QueryCondition,
-    QueryField,
-    QueryOptimizationSuggestion,
-    QueryTableReference,
-    QueryValidationResult,
-    TemplateCategory,
-    TemplateExample,
-    TemplateSuggestion,
+from mcp_1c.domain.embedding import (
+    EmbeddingDocument,
+    EmbeddingStats,
+    SearchResult,
+)
+from mcp_1c.domain.metadata import (
+    Attribute,
+    Form,
+    MetadataObject,
+    MetadataType,
+    Module,
+    ModuleType,
+    Subsystem,
+    TabularSection,
+    Template,
 )
 from mcp_1c.domain.mxl import (
     AreaType,
@@ -65,11 +54,21 @@ from mcp_1c.domain.mxl import (
     ParameterType,
     TemplateParameter,
 )
-
-from mcp_1c.domain.embedding import (
-    EmbeddingDocument,
-    EmbeddingStats,
-    SearchResult,
+from mcp_1c.domain.templates import (
+    CodeTemplate,
+    GenerationContext,
+    GenerationResult,
+    ParsedQuery,
+    Placeholder,
+    PlaceholderType,
+    QueryCondition,
+    QueryField,
+    QueryOptimizationSuggestion,
+    QueryTableReference,
+    QueryValidationResult,
+    TemplateCategory,
+    TemplateExample,
+    TemplateSuggestion,
 )
 
 __all__ = [
