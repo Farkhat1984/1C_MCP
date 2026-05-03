@@ -216,11 +216,24 @@ class KnowledgeGraphEngine:
         return self._initialized and self._graph is not None
 
     async def _ensure_storage(self) -> None:
-        """Lazily initialize SQLite storage using the global cache db_path."""
+        """Lazily initialize SQLite storage in the workspace cache.
+
+        Uses ``MetadataEngine.workspace.cache_db`` when a workspace is
+        active, falls back to the default path otherwise. Without this,
+        every web instance defaults to ``./.mcp_1c_cache.db`` resolved
+        against the cwd of the *server process* — meaning two services
+        with different MCP_CONFIG_PATH (e.g. qga and smeta) silently
+        share one KG file. Cross-config nodes leak into both query
+        results.
+        """
         if self._storage._connection is not None:
             return
-        config = get_config()
-        db_path = config.cache.db_path
+        meta = MetadataEngine.get_instance()
+        ws = meta.workspace if meta.is_initialized else None
+        if ws is not None:
+            db_path = ws.cache_db
+        else:
+            db_path = get_config().cache.db_path
         await self._storage.init_tables(db_path)
 
     async def build(
