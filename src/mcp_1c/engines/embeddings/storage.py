@@ -216,8 +216,19 @@ class VectorStorage:
             logger.info(f"vec backfill progress: {copied}/{total - vec_total}")
         logger.info(f"vec_embeddings backfill complete: {copied} rows copied")
 
-    async def save_documents(self, documents: list[EmbeddingDocument]) -> int:
-        """Save or update documents in both metadata and vec0 tables."""
+    async def save_documents(
+        self,
+        documents: list[EmbeddingDocument],
+        skip_vec: bool = False,
+    ) -> int:
+        """Save or update documents in both metadata and vec0 tables.
+
+        Args:
+            documents: Documents to save (must have embedding set).
+            skip_vec: If True, write only to the embeddings table and skip
+                vec_embeddings. Use during bulk indexing runs; call
+                rebuild_vec_from_embeddings() afterwards to sync vec0.
+        """
         if not documents:
             return 0
 
@@ -245,15 +256,53 @@ class VectorStorage:
         if not meta_rows:
             return 0
 
-        # vec0 has no UPSERT — emulate via DELETE + INSERT in one transaction.
-        del_rows = [(row[1],) for row in vec_rows]  # row[1] is id
-
         await conn.executemany(_UPSERT_DOC, meta_rows)
-        await conn.executemany(_VEC_DELETE_BY_ID, del_rows)
-        await conn.executemany(_VEC_INSERT, vec_rows)
+
+        if not skip_vec:
+            # vec0 has no UPSERT — emulate via DELETE + INSERT.
+            del_rows = [(row[1],) for row in vec_rows]  # row[1] is id
+            await conn.executemany(_VEC_DELETE_BY_ID, del_rows)
+            await conn.executemany(_VEC_INSERT, vec_rows)
+
         await conn.commit()
         logger.debug(f"Saved {len(meta_rows)} documents to vector storage")
         return len(meta_rows)
+
+    async def rebuild_vec_from_embeddings(self) -> int:
+        """Drop and recreate vec_embeddings, then copy all rows from embeddings.
+
+        Use after a bulk indexing run that used skip_vec=True.
+        Returns the number of rows inserted into vec_embeddings.
+        """
+        conn = await self._get_conn()
+        logger.info("Rebuilding vec_embeddings from embeddings table...")
+
+        await conn.execute("DROP TABLE IF EXISTS vec_embeddings")
+        await conn.execute(_vec_table_sql(self._dimension))
+        await conn.commit()
+
+        batch_size = 500
+        copied = 0
+        cursor = await conn.execute(
+            "SELECT doc_type, id, embedding, "
+            "COALESCE(object_type,'') AS object_type, "
+            "COALESCE(module_type,'') AS module_type "
+            "FROM embeddings"
+        )
+        while True:
+            rows = await cursor.fetchmany(batch_size)
+            if not rows:
+                break
+            batch = [
+                (r["doc_type"], r["id"], r["embedding"], r["object_type"], r["module_type"])
+                for r in rows
+            ]
+            await conn.executemany(_VEC_INSERT, batch)
+            await conn.commit()
+            copied += len(batch)
+            logger.info(f"vec rebuild progress: {copied}")
+        logger.info(f"vec_embeddings rebuild complete: {copied} rows")
+        return copied
 
     async def search(
         self,

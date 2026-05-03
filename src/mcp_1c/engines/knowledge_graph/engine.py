@@ -998,6 +998,12 @@ class KnowledgeGraphEngine:
 
         parser = BslParser()
         proc_node_ids: dict[tuple[str, str], str] = {}
+        # Inverted index: lowercased name → list of node ids declaring
+        # that name. Lets cross-module name resolution stay O(1) per
+        # call site instead of scanning all procedures (10⁹ ops on a
+        # 22k-procedure config — _resolve_global_procedure was the hot
+        # spot of the qga build at 25+ minutes).
+        proc_by_name: dict[str, list[str]] = {}
         # path-resolved → ordered procs in that file, for mapping LSP
         # ``Location.range.start.line`` back to a Procedure node.
         procs_by_path: dict[str, list[tuple[int, int, str]]] = {}
@@ -1021,7 +1027,9 @@ class KnowledgeGraphEngine:
                     proc_id = self._procedure_node_id(
                         obj, module.module_type.value, proc.name
                     )
-                    proc_node_ids[(proc.name.lower(), obj.full_name)] = proc_id
+                    proc_name_lower = proc.name.lower()
+                    proc_node_ids[(proc_name_lower, obj.full_name)] = proc_id
+                    proc_by_name.setdefault(proc_name_lower, []).append(proc_id)
                     procs_by_path.setdefault(file_key, []).append(
                         (proc.start_line, proc.end_line, proc_id)
                     )
@@ -1070,9 +1078,16 @@ class KnowledgeGraphEngine:
                             (callee_lower, obj.full_name)
                         )
                     else:
-                        callee_id = self._resolve_global_procedure(
-                            callee_lower, proc_node_ids
-                        )
+                        # O(1) lookup via inverted index. Same uniqueness
+                        # rule as before: only emit edge if name resolves
+                        # to exactly one procedure across the codebase
+                        # (Phase 1 audit: false positives are worse than
+                        # false negatives in the call graph).
+                        candidates = proc_by_name.get(callee_lower)
+                        if candidates is not None and len(candidates) == 1:
+                            callee_id = candidates[0]
+                        else:
+                            callee_id = None
                         # Ambiguous (None from name resolver) → ask LSP.
                         if callee_id is None:
                             callee_id = await self._resolve_via_lsp(

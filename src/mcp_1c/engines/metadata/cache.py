@@ -12,6 +12,7 @@ Optimized with:
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import aiosqlite
 
@@ -351,36 +352,79 @@ class MetadataCache:
             return cached
 
         async with profiler.measure("cache.search_objects"):
-            search_pattern = f"%{query}%"
+            tokens = query.split()
 
             async with self._connection.cursor() as cursor:
-                if metadata_type:
-                    await cursor.execute("""
-                        SELECT * FROM metadata_objects
-                        WHERE metadata_type = ?
-                        AND (name LIKE ? OR synonym LIKE ? COLLATE NOCASE)
-                        ORDER BY
-                            CASE WHEN name LIKE ? THEN 0 ELSE 1 END,
-                            name
-                        LIMIT ?
-                    """, (metadata_type.value, search_pattern, search_pattern,
-                          f"{query}%", limit))
-                else:
-                    await cursor.execute("""
-                        SELECT * FROM metadata_objects
-                        WHERE name LIKE ? OR synonym LIKE ? COLLATE NOCASE
-                        ORDER BY
-                            CASE WHEN name LIKE ? THEN 0 ELSE 1 END,
-                            name
-                        LIMIT ?
-                    """, (search_pattern, search_pattern, f"{query}%", limit))
-
-                rows = await cursor.fetchall()
+                rows = await self._search_by_tokens(
+                    cursor, tokens, metadata_type, limit
+                )
                 result = [self._row_to_object(row) for row in rows]
 
                 # Store in cache
                 await self._search_cache.set(cache_key, result)
                 return result
+
+    async def _search_by_tokens(
+        self,
+        cursor: Any,
+        tokens: list[str],
+        metadata_type: MetadataType | None,
+        limit: int,
+    ) -> list[Any]:
+        """Run tokenised search: all tokens must appear in name OR synonym (AND semantics).
+
+        Falls back to OR semantics if AND yields no results.
+        """
+        for use_and in (True, False):
+            rows = await self._exec_token_search(
+                cursor, tokens, metadata_type, limit, use_and=use_and
+            )
+            if rows:
+                return rows
+        return []
+
+    async def _exec_token_search(
+        self,
+        cursor: Any,
+        tokens: list[str],
+        metadata_type: MetadataType | None,
+        limit: int,
+        use_and: bool = True,
+    ) -> list[Any]:
+        patterns = [f"%{t}%" for t in tokens]
+        prefix_pattern = f"{tokens[0]}%" if tokens else "%"
+        joiner = " AND " if use_and else " OR "
+        token_clause = joiner.join(
+            f"(name LIKE ? OR synonym LIKE ? COLLATE NOCASE)" for _ in tokens
+        )
+        token_params: list[str] = []
+        for p in patterns:
+            token_params.extend([p, p])
+
+        if metadata_type:
+            sql = f"""
+                SELECT * FROM metadata_objects
+                WHERE metadata_type = ?
+                AND ({token_clause})
+                ORDER BY
+                    CASE WHEN name LIKE ? THEN 0 ELSE 1 END,
+                    name
+                LIMIT ?
+            """
+            params: list[Any] = [metadata_type.value, *token_params, prefix_pattern, limit]
+        else:
+            sql = f"""
+                SELECT * FROM metadata_objects
+                WHERE {token_clause}
+                ORDER BY
+                    CASE WHEN name LIKE ? THEN 0 ELSE 1 END,
+                    name
+                LIMIT ?
+            """
+            params = [*token_params, prefix_pattern, limit]
+
+        await cursor.execute(sql, params)
+        return await cursor.fetchall()
 
     async def get_all_object_names(
         self,

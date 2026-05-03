@@ -134,6 +134,30 @@ class BspEngine:
             return []
         results: list[dict[str, Any]] = []
 
+        # Genre queries: when the user types a category name we list
+        # everything from that category, otherwise a "hooks" search
+        # returns 0 just because no entry happens to contain "хук" in
+        # its description. The token list is intentionally short — only
+        # category labels, not arbitrary content keywords.
+        genre_hooks = {"хук", "хуки", "hook", "hooks", "переопределяемый"}
+        genre_patterns = {"паттерн", "паттерны", "pattern", "patterns"}
+        genre_modules = {"модуль", "модули", "module", "modules"}
+        if q in genre_hooks:
+            return [
+                {"kind": "hook", "name": h.name, "module": h.module, "purpose": h.purpose}
+                for h in self._hooks
+            ][:limit]
+        if q in genre_patterns:
+            return [
+                {"kind": "pattern", "name": p.name, "task": p.task, "modules": p.modules}
+                for p in self._patterns
+            ][:limit]
+        if q in genre_modules:
+            return [
+                {"kind": "module", "name": m.name, "purpose": m.purpose}
+                for m in self._modules
+            ][:limit]
+
         for m in self._modules:
             haystack = " ".join(
                 [m.name, m.purpose, " ".join(m.tags)]

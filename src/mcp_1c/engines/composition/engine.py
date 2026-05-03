@@ -42,10 +42,16 @@ class CompositionEngine:
         if self._config_path is None:
             return []
         root = self._config_path
+        # Configurator export (real 8.3 layout) keeps the schema in a
+        # subfolder: Templates/<SchemaName>/Ext/Template.xml. The bare
+        # Templates/<SchemaName>.xml is the metadata wrapper, not the
+        # schema itself, so it must be tried *after* the Ext path.
         return [
+            root / "Reports" / object_name / "Templates" / schema_name / "Ext" / "Template.xml",
+            root / "src" / "Reports" / object_name / "Templates" / schema_name / "Ext" / "Template.xml",
             root / "Reports" / object_name / "Templates" / f"{schema_name}.xml",
             root / "src" / "Reports" / object_name / "Templates" / f"{schema_name}.xml",
-            root / "Reports" / object_name / "Forms" / f"{schema_name}.xml",  # fallback
+            root / "Reports" / object_name / "Forms" / f"{schema_name}.xml",
         ]
 
     async def get_schema(

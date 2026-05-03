@@ -51,9 +51,14 @@ def _sliding_window_chunks(
     while start < len(text):
         end = min(start + chunk_size, len(text))
 
-        # Prefer line-break boundary (unless we're at the very end)
+        # Prefer line-break boundary (unless we're at the very end).
+        # _find_line_break may return a value <= start when the only
+        # newline in the lookback window sits before our current
+        # position; only accept it when it strictly advances `end`.
         if end < len(text):
-            end = _find_line_break(text, end)
+            line_end = _find_line_break(text, end)
+            if line_end > start:
+                end = line_end
 
         chunks.append((text[start:end], start, idx))
         idx += 1
@@ -61,10 +66,16 @@ def _sliding_window_chunks(
         if end >= len(text):
             break
 
-        # Move start forward, leaving overlap
+        # Move start forward, leaving overlap. Guarantee progress: if
+        # overlap >= effective chunk (small chunk_size with large
+        # overlap), fall back to no-overlap stepping. Final guard
+        # forces at least +1 so an empty/zero-width chunk can never
+        # spin the loop.
         next_start = end - overlap
         if next_start <= start:
-            next_start = end  # Avoid infinite loop
+            next_start = end
+        if next_start <= start:
+            next_start = start + 1
         start = next_start
 
     return chunks

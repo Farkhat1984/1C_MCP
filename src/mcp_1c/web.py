@@ -273,17 +273,66 @@ def create_app(host: str = "127.0.0.1", port: int = 8080) -> Starlette:  # noqa:
 
                 logger.info(f"Auto-initializing with config: {config_path}")
                 meta = MetadataEngine.get_instance()
-                await meta.initialize(Path(config_path), watch=False)
+
+                from mcp_1c.config import OverlayRoot
+
+                overlays: list[OverlayRoot] = []
+                overlay_env = os.environ.get("MCP_OVERLAY_PATHS", "").strip()
+                if overlay_env:
+                    for entry in overlay_env.split(","):
+                        entry = entry.strip()
+                        if not entry or "=" not in entry:
+                            continue
+                        name, raw_path = entry.split("=", 1)
+                        overlays.append(
+                            OverlayRoot(name=name.strip(), path=Path(raw_path.strip()))
+                        )
+                    logger.info(f"Configured {len(overlays)} overlay(s)")
+
+                await meta.initialize(
+                    Path(config_path),
+                    watch=False,
+                    overlay_roots=overlays or None,
+                )
                 meta_stats = await meta.get_stats()
                 logger.info(f"Metadata: {sum(meta_stats.values())} objects")
 
                 kg = KnowledgeGraphEngine.get_instance()
-                await kg.build(meta)
-                kg_stats = await kg.get_stats()
-                logger.info(
-                    f"Knowledge graph: {kg_stats['total_nodes']} nodes, "
-                    f"{kg_stats['total_edges']} edges"
-                )
+                # Reuse the persisted graph when it has code-level
+                # edges. Rebuilding on every startup is expensive
+                # (~10 minutes on a 9k-object config) and was silently
+                # *erasing* procedure_call edges built by an earlier
+                # graph.build call — auto-init was passed no
+                # code_engine, so the rebuild produced a metadata-only
+                # graph and overwrote the richer one in storage.
+                from mcp_1c.engines.code import CodeEngine
+                code_engine = CodeEngine.get_instance()
+                rebuild_needed = True
+                try:
+                    await kg._load_or_fail()
+                    stats = await kg.get_stats()
+                    has_code_edges = bool(
+                        stats.get("relationship_types", {}).get("procedure_call")
+                    )
+                    if has_code_edges:
+                        rebuild_needed = False
+                        logger.info(
+                            f"Knowledge graph loaded from cache: "
+                            f"{stats['total_nodes']} nodes, "
+                            f"{stats['total_edges']} edges (with code edges)"
+                        )
+                except Exception:
+                    pass
+                if rebuild_needed:
+                    logger.info(
+                        "Building knowledge graph with code edges (one-time, ~10 min)"
+                    )
+                    await kg.build(meta, code_engine=code_engine)
+                    kg_stats = await kg.get_stats()
+                    logger.info(
+                        f"Knowledge graph built: {kg_stats['total_nodes']} nodes, "
+                        f"{kg_stats['total_edges']} edges"
+                    )
 
                 emb_db = os.environ.get("MCP_EMBEDDINGS_DB")
                 if emb_db and Path(emb_db).exists():

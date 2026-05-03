@@ -279,62 +279,79 @@ def _parse_role_xml(role_xml_path: Path) -> dict[str, Any]:
     if synonym_elem and synonym_elem[0].text:
         synonym = synonym_elem[0].text.strip()
 
-    # Parse rights
+    # Parse rights. Real Configurator export uses lowercase tags
+    # (<rights>/<object>/<right>); the schema docs show Pascal case.
+    # local-name() matches both, but the *root* is itself <rights> in
+    # the file we open — don't search ".//Rights", just iterate the
+    # root's <object> children directly.
     objects_rights: list[dict[str, Any]] = []
-    rights_section = root.xpath(".//*[local-name()='Rights']")
+    object_elems = root.xpath(
+        "./*[local-name()='object'] | ./*[local-name()='Object']"
+    )
+    # Fallback for nested layouts (older docs).
+    if not object_elems:
+        object_elems = root.xpath(".//*[local-name()='object' or local-name()='Object']")
 
-    for rights_elem in rights_section:
-        object_elems = rights_elem.xpath("./*[local-name()='Object']")
-        for obj_elem in object_elems:
-            # Object path — could be an attribute or child element
-            obj_path = obj_elem.get("path", "")
-            if not obj_path:
-                path_child = obj_elem.xpath("./*[local-name()='Name']")
-                if path_child and path_child[0].text:
-                    obj_path = path_child[0].text.strip()
+    for obj_elem in object_elems:
+        # Object path — child <name>/<Name> or @path attribute.
+        obj_path = obj_elem.get("path", "")
+        if not obj_path:
+            path_child = obj_elem.xpath(
+                "./*[local-name()='name' or local-name()='Name']"
+            )
+            if path_child and path_child[0].text:
+                obj_path = path_child[0].text.strip()
+        if not obj_path:
+            continue
 
-            rights_list: list[dict[str, Any]] = []
-            right_elems = obj_elem.xpath("./*[local-name()='Right']")
-            for right_elem in right_elems:
-                right_name_el = right_elem.xpath("./*[local-name()='Name']")
-                right_value_el = right_elem.xpath("./*[local-name()='Value']")
+        rights_list: list[dict[str, Any]] = []
+        right_elems = obj_elem.xpath(
+            "./*[local-name()='right' or local-name()='Right']"
+        )
+        for right_elem in right_elems:
+            right_name_el = right_elem.xpath(
+                "./*[local-name()='name' or local-name()='Name']"
+            )
+            right_value_el = right_elem.xpath(
+                "./*[local-name()='value' or local-name()='Value']"
+            )
 
-                right_name = ""
-                if right_name_el and right_name_el[0].text:
-                    right_name = right_name_el[0].text.strip()
-                elif right_elem.get("name"):
-                    right_name = right_elem.get("name", "")
+            right_name = ""
+            if right_name_el and right_name_el[0].text:
+                right_name = right_name_el[0].text.strip()
+            elif right_elem.get("name"):
+                right_name = right_elem.get("name", "")
 
-                right_value = False
-                if right_value_el and right_value_el[0].text:
-                    right_value = right_value_el[0].text.strip().lower() == "true"
-                elif right_elem.get("value"):
-                    right_value = right_elem.get("value", "").lower() == "true"
+            right_value = False
+            if right_value_el and right_value_el[0].text:
+                right_value = right_value_el[0].text.strip().lower() == "true"
+            elif right_elem.get("value"):
+                right_value = right_elem.get("value", "").lower() == "true"
 
-                # Check for RLS template
-                rls_templates: list[str] = []
-                if right_name.upper() == "RLS":
-                    template_elems = right_elem.xpath(
-                        "./*[local-name()='Template']"
-                    )
-                    for tpl in template_elems:
-                        if tpl.text:
-                            rls_templates.append(tpl.text.strip())
+            # Check for RLS template
+            rls_templates: list[str] = []
+            if right_name.upper() == "RLS":
+                template_elems = right_elem.xpath(
+                    "./*[local-name()='restrictionByCondition' or local-name()='Template']"
+                )
+                for tpl in template_elems:
+                    if tpl.text:
+                        rls_templates.append(tpl.text.strip())
 
-                right_entry: dict[str, Any] = {
-                    "name": right_name,
-                    "value": right_value,
-                }
-                if rls_templates:
-                    right_entry["rls_templates"] = rls_templates
+            right_entry: dict[str, Any] = {
+                "name": right_name,
+                "value": right_value,
+            }
+            if rls_templates:
+                right_entry["rls_templates"] = rls_templates
 
-                rights_list.append(right_entry)
+            rights_list.append(right_entry)
 
-            if rights_list:
-                objects_rights.append({
-                    "object": obj_path,
-                    "rights": rights_list,
-                })
+        if rights_list:
+            objects_rights.append({
+                "object": obj_path,
+                "rights": rights_list,
+            })
 
     return {
         "name": role_name,
@@ -345,23 +362,38 @@ def _parse_role_xml(role_xml_path: Path) -> dict[str, Any]:
 
 
 def _find_role_xml(config_path: Path, role_name: str) -> Path | None:
-    """Find XML file for a role by name.
+    """Locate the *rights* XML for a role.
 
-    Supports both directory structures:
-    1. Configurator export: Roles/RoleName.xml
-    2. Legacy/EDT: Roles/RoleName/RoleName.xml
+    A 1C role is exported as:
+
+        Roles/<RoleName>.xml             ← metadata wrapper (uuid, name…)
+        Roles/<RoleName>/Ext/Rights.xml  ← actual rights table  ← we want this
+
+    The wrapper does not contain the rights, so resolving the role name
+    to ``<RoleName>.xml`` gives an empty parse and ``roles_count: 0``.
+    Always prefer ``Ext/Rights.xml``.
     """
     roles_dir = config_path / "Roles"
     if not roles_dir.is_dir():
         return None
 
-    # Configurator export
-    candidate = roles_dir / f"{role_name}.xml"
+    # Configurator export — actual rights table.
+    candidate = roles_dir / role_name / "Ext" / "Rights.xml"
     if candidate.exists():
         return candidate
 
-    # Legacy/EDT
+    # EDT export.
+    candidate = roles_dir / role_name / "Rights.xml"
+    if candidate.exists():
+        return candidate
+
+    # Older docs / nested layout (kept as last-ditch fallback).
     candidate = roles_dir / role_name / f"{role_name}.xml"
+    if candidate.exists():
+        return candidate
+
+    # Bare wrapper (will likely produce 0 objects, but better than None).
+    candidate = roles_dir / f"{role_name}.xml"
     if candidate.exists():
         return candidate
 

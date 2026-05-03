@@ -69,6 +69,67 @@ _KIND_MAP = {
 
 _CHILD_CONTAINERS = {"ChildItems", "ChildElements", "Items", "items"}
 
+# Form events as written in XML use English schema names (OnOpen,
+# AfterWrite, …) but the Form/Module.bsl handler procedure is named in
+# the configuration's primary language — Russian for almost every 1C
+# config. The names below are the platform's default Russian mapping;
+# Configurator generates these names when you add a handler from the
+# events panel. A user can rename a procedure manually, but most code
+# keeps the convention. We use this as the *expected* procedure name
+# and the BSL parser later confirms whether it actually exists.
+_EVENT_HANDLER_NAMES_RU: dict[str, str] = {
+    # Form-level lifecycle
+    "OnCreateAtServer": "ПриСозданииНаСервере",
+    "OnOpen": "ПриОткрытии",
+    "BeforeClose": "ПередЗакрытием",
+    "OnClose": "ПриЗакрытии",
+    "BeforeWrite": "ПередЗаписью",
+    "BeforeWriteAtServer": "ПередЗаписьюНаСервере",
+    "OnWriteAtServer": "ПриЗаписиНаСервере",
+    "AfterWrite": "ПослеЗаписи",
+    "AfterWriteAtServer": "ПослеЗаписиНаСервере",
+    "OnReadAtServer": "ПриЧтенииНаСервере",
+    "OnFillCheckProcessingAtServer": "ОбработкаПроверкиЗаполненияНаСервере",
+    "OnSaveDataInSettingsAtServer": "ПриСохраненииДанныхВНастройкахНаСервере",
+    "OnLoadDataFromSettingsAtServer": "ПриЗагрузкеДанныхИзНастроекНаСервере",
+    "NotificationProcessing": "ОбработкаОповещения",
+    "ChoiceProcessing": "ОбработкаВыбора",
+    "URLProcessing": "ОбработкаНавигационнойСсылки",
+    "ExternalEvent": "ВнешнееСобытие",
+    "DragStart": "НачалоПеретаскивания",
+    "DragOver": "ПроверкаПеретаскивания",
+    "Drag": "Перетаскивание",
+    # Element/field events
+    "OnChange": "ПриИзменении",
+    "OnEditEnd": "ПриОкончанииРедактирования",
+    "StartChoice": "НачалоВыбора",
+    "ChoiceStart": "НачалоВыбора",
+    "Choice": "Выбор",
+    "Clearing": "Очистка",
+    "AutoComplete": "Автоподбор",
+    "TextEditEnd": "ОкончаниеТекстаПриРедактировании",
+    "TextChange": "ИзменениеТекстаРедактирования",
+    "Click": "Нажатие",
+    "OpenLink": "ОткрытиеСсылки",
+    "Adjustment": "Регулирование",
+    "OnActivate": "ПриАктивизации",
+    "OnActivateRow": "ПриАктивизацииСтроки",
+    "OnActivateField": "ПриАктивизацииПоля",
+    "OnActivateCell": "ПриАктивизацииЯчейки",
+    "BeforeAddRow": "ПередНачаломДобавления",
+    "BeforeRowChange": "ПередНачаломИзменения",
+    "BeforeDeleteRow": "ПередУдалением",
+    "OnStartEdit": "ПриНачалеРедактирования",
+    "Selection": "Выбор",
+    "BeforeDelete": "ПередУдалением",
+    "ValueChoice": "ВыборЗначения",
+    "RegulationOfValue": "РегулированиеЗначения",
+    "DataExchange": "ОбменДанными",
+    # Form-level data events
+    "OnLoadAtServer": "ПриЗагрузкеНаСервере",
+    "OnLoadFromExtensionAtServer": "ПриЗагрузкеИзРасширенияНаСервере",
+}
+
 
 def _localname(tag: str) -> str:
     """Strip XML namespace from an element tag."""
@@ -157,14 +218,26 @@ class FormParser:
         for child in attrs_container:
             if _localname(child.tag) != "Attribute":
                 continue
-            name = _text(_find_local(child, "Name"))
+            # Configurator export stores the name in @name; older /
+            # MDClasses layout uses a child <Name>. Accept both.
+            name = child.get("name") or _text(_find_local(child, "Name"))
             if not name:
                 continue
+            # NOTE: lxml elements are falsy when they have no children;
+            # `a or b` returns b in that case. Always compare to None.
             type_node = _find_local(child, "Type")
+            if type_node is None:
+                type_node = _find_local(child, "ValueType")
             type_str = self._extract_type(type_node)
             title = self._extract_title(_find_local(child, "Title"))
             main = _text(_find_local(child, "MainAttribute")).lower() == "true"
-            save = _text(_find_local(child, "SaveData")).lower() == "true"
+            # Real Form.xml uses <SavedData>; the older MDClasses doc
+            # used <SaveData>. Accept both — but never via `or` chain
+            # (lxml truthiness pitfall above).
+            save_node = _find_local(child, "SavedData")
+            if save_node is None:
+                save_node = _find_local(child, "SaveData")
+            save = _text(save_node).lower() == "true"
             attr = FormAttribute(
                 name=name, type=type_str, title=title, main=main, save_data=save
             )
@@ -172,15 +245,20 @@ class FormParser:
             if columns_container is None:
                 columns_container = _find_local(child, "Items")
             if columns_container is not None:
-                attr.columns = [
-                    FormAttribute(
-                        name=_text(_find_local(c, "Name")) or "",
-                        type=self._extract_type(_find_local(c, "Type")),
-                    )
-                    for c in columns_container
-                    if _localname(c.tag) == "Attribute"
-                    and _text(_find_local(c, "Name"))
-                ]
+                cols: list[FormAttribute] = []
+                for c in columns_container:
+                    if _localname(c.tag) != "Attribute":
+                        continue
+                    cname = c.get("name") or _text(_find_local(c, "Name"))
+                    if not cname:
+                        continue
+                    ctype_node = _find_local(c, "Type")
+                    if ctype_node is None:
+                        ctype_node = _find_local(c, "ValueType")
+                    cols.append(FormAttribute(
+                        name=cname, type=self._extract_type(ctype_node)
+                    ))
+                attr.columns = cols
             out.append(attr)
         return out
 
@@ -218,10 +296,15 @@ class FormParser:
                 or _text(_find_local(handler, "Name"))
                 or handler.get("name", "")
             )
+            # Procedure name is rarely written in XML — Configurator
+            # generates a Russian-named handler in Form/Module.bsl using
+            # a fixed event→name table. Fall back to that table so the
+            # consumer doesn't get an empty string for every handler.
             procedure = (
                 _text(_find_local(handler, "Procedure"))
                 or _text(_find_local(handler, "Name"))
                 or handler.get("procedure", "")
+                or _EVENT_HANDLER_NAMES_RU.get(event, "")
             )
             if not event:
                 continue

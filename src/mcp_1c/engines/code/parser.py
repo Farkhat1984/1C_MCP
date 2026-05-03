@@ -7,6 +7,7 @@ Uses regex-based parsing for efficiency.
 Phase 2: Extended parsing for method calls, metadata references, and queries.
 """
 
+import asyncio
 import re
 from pathlib import Path
 
@@ -255,7 +256,7 @@ class BslParser:
             Parsed BslModule
         """
         content = await self.reader.read_file(path)
-        return self.parse_content(content, path)
+        return await asyncio.to_thread(self.parse_content, content, path)
 
     def parse_content(self, content: str, path: Path | None = None) -> BslModule:
         """
@@ -285,78 +286,89 @@ class BslParser:
             line_count=line_count,
         )
 
+    # Compiled per-line pattern for procedure/function headers — O(line_len) each call
+    _PROC_LINE_RE = re.compile(
+        r"^\s*(?:Асинх\s+|Async\s+)?"
+        r"(?P<type>Процедура|Функция|Procedure|Function)\s+"
+        r"(?P<name>[a-zA-Zа-яА-ЯёЁ_][a-zA-Zа-яА-ЯёЁ0-9_]*)\s*"
+        r"\((?P<params>[^)]*)\)"
+        r"(?P<export>\s+Экспорт|\s+Export)?",
+        re.IGNORECASE,
+    )
+    _PROC_OPEN_RE = re.compile(
+        r"^\s*(?:Асинх\s+|Async\s+)?(?:Процедура|Функция|Procedure|Function)\s+\S",
+        re.IGNORECASE,
+    )
+    _DIRECTIVE_RE = re.compile(r"^\s*&\S+", re.IGNORECASE)
+
     def _parse_procedures(
         self,
         content: str,
         lines: list[str],
         regions: list[Region],
     ) -> list[Procedure]:
-        """Parse all procedures and functions."""
+        """Parse procedures/functions using a line-by-line scanner (no full-file regex)."""
         procedures: list[Procedure] = []
+        n = len(lines)
+        i = 0
+        while i < n:
+            line = lines[i]
+            m = self._PROC_LINE_RE.match(line)
 
-        # Find all procedure/function starts
-        for match in re.finditer(
-            r"(?P<comment>(?:^[ \t]*//[^\r\n]*[\r\n]+)*)?"
-            r"(?P<directive>^&[^\r\n]+[\r\n]+)?"
-            r"^\s*(?P<async>Асинх\s+|Async\s+)?"
-            r"(?P<type>Процедура|Функция|Procedure|Function)\s+"
-            r"(?P<name>[a-zA-Zа-яА-ЯёЁ_][a-zA-Zа-яА-ЯёЁ0-9_]*)\s*"
-            r"\((?P<params>[^)]*)\)"
-            r"(?P<export>\s+Экспорт|\s+Export)?",
-            content,
-            re.MULTILINE | re.IGNORECASE,
-        ):
-            # Use position of "type" group (Процедура/Функция) for accurate line number
-            type_pos = match.start("type")
-            start_line = content[:type_pos].count("\n") + 1
+            # Handle multi-line parameter lists (params split across lines)
+            if m is None and self._PROC_OPEN_RE.match(line):
+                combined = line.rstrip()
+                j = i + 1
+                while j < min(i + 10, n) and ")" not in combined:
+                    combined += " " + lines[j].strip()
+                    j += 1
+                m = self._PROC_LINE_RE.match(combined)
+
+            if m is None:
+                i += 1
+                continue
+
+            start_line = i + 1  # 1-based
+
+            # Look back for directive on the immediately preceding line
+            directive = None
+            directive_line_idx = i - 1
+            if directive_line_idx >= 0 and self._DIRECTIVE_RE.match(lines[directive_line_idx]):
+                directive = self._parse_directive(lines[directive_line_idx].strip())
+
+            # Look back for doc-comment block (consecutive // lines before directive/proc)
+            comment = ""
+            comment_scan = directive_line_idx if directive is None else directive_line_idx - 1
+            comment_lines: list[str] = []
+            while comment_scan >= 0 and lines[comment_scan].strip().startswith("//"):
+                comment_lines.insert(0, lines[comment_scan])
+                comment_scan -= 1
+            if comment_lines:
+                comment = self._clean_comment("\n".join(comment_lines))
 
             # Find end of procedure
             end_line = self._find_procedure_end(lines, start_line)
 
-            # Parse directive
-            directive = None
-            directive_str = match.group("directive")
-            if directive_str:
-                directive = self._parse_directive(directive_str.strip())
-
-            # Parse parameters
-            params = self._parse_parameters(match.group("params"))
-
-            # Determine if function
-            proc_type = match.group("type").lower()
+            params = self._parse_parameters(m.group("params"))
+            proc_type = m.group("type").lower()
             is_function = proc_type in ("функция", "function")
-
-            # Check export
-            is_export = bool(match.group("export"))
-
-            # Get documentation comment
-            comment = ""
-            comment_match = match.group("comment")
-            if comment_match:
-                comment = self._clean_comment(comment_match)
-
-            # Find containing region
+            is_export = bool(m.group("export"))
             region_name = self._find_containing_region(start_line, regions)
 
-            # Signature line is the same as start_line (line with Процедура/Функция)
-            signature_line = start_line
-
-            # Extract body
-            body = "\n".join(lines[start_line - 1 : end_line])
-
-            # Extract just the signature
-            signature = lines[signature_line - 1].strip() if signature_line <= len(lines) else ""
+            # Body: from start_line (0-indexed i) to end_line (exclusive, 0-indexed)
+            body = "\n".join(lines[i:end_line])
+            signature = line.strip()
 
             procedures.append(
                 Procedure(
-                    name=match.group("name"),
+                    name=m.group("name"),
                     is_function=is_function,
                     is_export=is_export,
                     directive=directive,
                     parameters=params,
                     start_line=start_line,
                     end_line=end_line,
-                    signature_line=signature_line,
+                    signature_line=start_line,
                     body=body,
                     signature=signature,
                     comment=comment,
@@ -364,18 +376,18 @@ class BslParser:
                 )
             )
 
+            # Jump past the end of this procedure
+            i = end_line
+
         return procedures
 
     def _find_procedure_end(self, lines: list[str], start_line: int) -> int:
-        """Find the end line of a procedure/function."""
+        """Find the end line of a procedure/function (1-based start_line)."""
+        end_keywords = {"конецпроцедуры", "конецфункции", "endprocedure", "endfunction"}
         for i in range(start_line, len(lines)):
-            line = lines[i].strip().lower()
-            if line in (
-                "конецпроцедуры",
-                "конецфункции",
-                "endprocedure",
-                "endfunction",
-            ):
+            # Strip semicolons (КонецПроцедуры; is valid BSL)
+            clean = lines[i].strip().rstrip(";").strip().lower()
+            if clean in end_keywords:
                 return i + 1
         return len(lines)
 

@@ -98,23 +98,16 @@ class EmbeddingEngine:
         self,
         documents: list[EmbeddingDocument],
         texts: list[str],
+        skip_vec: bool = False,
     ) -> int:
-        """Embed a batch of texts and save documents to storage.
-
-        Args:
-            documents: Documents to save (embedding field will be set).
-            texts: Corresponding texts to embed.
-
-        Returns:
-            Number of documents saved.
-        """
+        """Embed a batch of texts and save documents to storage."""
         assert self._client is not None
         assert self._storage is not None
 
         embeddings = await self._client.embed_batched(texts)
         for doc, emb in zip(documents, embeddings, strict=True):
             doc.embedding = emb
-        return await self._storage.save_documents(documents)
+        return await self._storage.save_documents(documents, skip_vec=skip_vec)
 
     async def _count_modules(
         self,
@@ -283,7 +276,7 @@ class EmbeddingEngine:
                         # Flush per module to bound memory
                         if module_texts:
                             saved = await self._embed_and_save_batch(
-                                module_docs, module_texts
+                                module_docs, module_texts, skip_vec=True
                             )
                             stats["indexed"] += saved
                             del module_docs, module_texts
@@ -391,11 +384,17 @@ class EmbeddingEngine:
                             })
                         continue
 
+                    logger.info(f"[proc] parse: {module.path}")
                     try:
-                        bsl_module = await code_engine.get_module_by_path(module.path)
+                        import asyncio as _asyncio
+                        bsl_module = await _asyncio.wait_for(
+                            code_engine.get_module_by_path(module.path),
+                            timeout=90.0,
+                        )
                         # Extract only what we need, then release the BSL module
                         procedures = list(bsl_module.procedures)
                         del bsl_module
+                        logger.info(f"[proc] parsed: {module.path} procs={len(procedures)}")
                     except Exception as exc:
                         logger.warning(f"Error parsing {module.path}: {exc}")
                         stats["errors"] += 1
@@ -471,9 +470,11 @@ class EmbeddingEngine:
 
                     # Flush after each module to bound memory
                     if mod_texts:
+                        logger.info(f"[proc] embed {len(mod_texts)} texts for {module_prefix}")
                         saved = await self._embed_and_save_batch(
-                            mod_docs, mod_texts
+                            mod_docs, mod_texts, skip_vec=True
                         )
+                        logger.info(f"[proc] saved {saved} docs for {module_prefix}")
                         stats["indexed"] += saved
                     del mod_docs, mod_texts
                     gc.collect()
@@ -632,7 +633,7 @@ class EmbeddingEngine:
 
                     # Flush batch when full
                     if len(batch_texts) >= batch_size:
-                        saved = await self._embed_and_save_batch(batch_docs, batch_texts)
+                        saved = await self._embed_and_save_batch(batch_docs, batch_texts, skip_vec=True)
                         stats["indexed"] += saved
                         batch_docs = []
                         batch_texts = []
@@ -653,7 +654,7 @@ class EmbeddingEngine:
 
         # Flush remaining
         if batch_texts:
-            saved = await self._embed_and_save_batch(batch_docs, batch_texts)
+            saved = await self._embed_and_save_batch(batch_docs, batch_texts, skip_vec=True)
             stats["indexed"] += saved
 
             if progress_cb is not None:
@@ -762,6 +763,16 @@ class EmbeddingEngine:
         except Exception as exc:
             logger.warning(f"Failed to invalidate embeddings for {object_full_name}: {exc}")
             return 0
+
+    async def rebuild_vec(self) -> int:
+        """Rebuild vec_embeddings from the embeddings table.
+
+        Call after a bulk indexing run to sync the KNN index.
+        Returns the number of rows inserted.
+        """
+        self._ensure_initialized()
+        assert self._storage is not None
+        return await self._storage.rebuild_vec_from_embeddings()
 
     async def close(self) -> None:
         """Close all resources."""

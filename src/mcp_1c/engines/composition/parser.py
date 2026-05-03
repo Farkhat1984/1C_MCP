@@ -50,15 +50,25 @@ def _text(elem: etree._Element | None, default: str = "") -> str:
     return elem.text.strip()
 
 
+def _ci_eq(a: str, b: str) -> bool:
+    """Case-insensitive equality.
+
+    Real 8.3 DCS exports use lower camelCase (``dataSet``, ``totalField``)
+    while older docs and unit tests use Pascal case (``DataSet``,
+    ``TotalField``). We accept both — the schema is unambiguous.
+    """
+    return a.lower() == b.lower()
+
+
 def _find_local(elem: etree._Element, name: str) -> etree._Element | None:
     for child in elem:
-        if _localname(child.tag) == name:
+        if _ci_eq(_localname(child.tag), name):
             return child
     return None
 
 
 def _find_all_local(elem: etree._Element, name: str) -> list[etree._Element]:
-    return [child for child in elem if _localname(child.tag) == name]
+    return [child for child in elem if _ci_eq(_localname(child.tag), name)]
 
 
 class CompositionParser:
@@ -124,6 +134,14 @@ class CompositionParser:
         kind_local = _localname(elem.tag)
         # In some files the kind is stored as an attribute or child <Type>
         kind = _DATASET_KIND_MAP.get(kind_local, DataSetKind.UNKNOWN)
+        # Real 8.3 export: <dataSet xsi:type="DataSetQuery"> — the kind
+        # lives in the xsi:type discriminator, not the tag name.
+        if kind is DataSetKind.UNKNOWN:
+            xsi_type = elem.get(
+                "{http://www.w3.org/2001/XMLSchema-instance}type", ""
+            )
+            if xsi_type:
+                kind = _DATASET_KIND_MAP.get(xsi_type, DataSetKind.UNKNOWN)
         if kind is DataSetKind.UNKNOWN:
             t = _find_local(elem, "Type")
             if t is not None and t.text:
@@ -135,20 +153,23 @@ class CompositionParser:
         if query_node is not None and query_node.text:
             ds.query_text = query_node.text.strip()
 
-        # Fields can be Field or DataSetField; we accept both.
-        for f_container_name in ("Fields", "Field", "DataSetField"):
-            container = _find_local(elem, f_container_name)
-            if container is None:
-                continue
-            for f_elem in container if f_container_name == "Fields" else [container]:
-                if _localname(f_elem.tag) not in {"Field", "DataSetField"}:
-                    continue
-                ds.fields.append(self._parse_data_set_field(f_elem))
-            if f_container_name == "Fields":
-                break
-        # Some schemas list fields directly under the data-set element
+        # Fields may live in a <Fields> container OR directly under the
+        # data-set. Real 8.3 export uses lowerCamelCase (<field>) directly
+        # under <dataSet>; older docs used Pascal case <Field> in <Fields>.
+        seen: set[int] = set()
+        container = _find_local(elem, "Fields")
+        if container is not None:
+            for f_elem in container:
+                if _ci_eq(_localname(f_elem.tag), "field") or _ci_eq(
+                    _localname(f_elem.tag), "datasetfield"
+                ):
+                    ds.fields.append(self._parse_data_set_field(f_elem))
+                    seen.add(id(f_elem))
         for f_elem in elem:
-            if _localname(f_elem.tag) in {"Field", "DataSetField"}:
+            if id(f_elem) in seen:
+                continue
+            local = _localname(f_elem.tag)
+            if _ci_eq(local, "field") or _ci_eq(local, "datasetfield"):
                 ds.fields.append(self._parse_data_set_field(f_elem))
         return ds
 
