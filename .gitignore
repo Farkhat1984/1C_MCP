@@ -103,6 +103,11 @@ cython_debug/
 .mcp-1c-cache/
 nul
 
+# Local battle/test scripts and runtime logs (may contain auth tokens)
+test_mcp_battle.py
+mcp-1c-web.log
+*.log
+
 # OS
 .DS_Store
 Thumbs.db

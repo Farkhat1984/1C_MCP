@@ -4,6 +4,7 @@ MCP Server implementation.
 Provides the core MCP server with tool registration and handling.
 """
 
+import os
 import signal
 from collections.abc import Sequence
 from typing import Any
@@ -20,6 +21,43 @@ from mcp_1c.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def _build_instructions() -> str:
+    config_path = os.environ.get("MCP_CONFIG_PATH", "").strip()
+    overlay_env = os.environ.get("MCP_OVERLAY_PATHS", "").strip()
+    preloaded = bool(config_path)
+
+    parts = [
+        "MCP-сервер для 1C:Enterprise — анализ BSL-кода, метаданных, "
+        "графа знаний, embeddings, генерация запросов и обработчиков.",
+        "",
+    ]
+    if preloaded:
+        parts.append(
+            f"Конфигурация УЖЕ загружена и проиндексирована при старте сервера: "
+            f"{config_path}. Вызывать `metadata-init` НЕ НУЖНО — это требуется "
+            "только если хочешь сменить или переиндексировать конфигурацию."
+        )
+        if overlay_env:
+            parts.append(f"Активные overlay-корни: {overlay_env}")
+        parts.append("")
+    parts.extend([
+        "Не запрашивай у пользователя путь к файлам конфигурации — "
+        "сразу вызывай инструменты.",
+        "",
+        "Типовой путь получения кода объекта:",
+        "  1. `metadata-search` или `metadata-list` — найти точное имя объекта.",
+        "  2. `metadata-get` — структура объекта (атрибуты, формы, модули).",
+        "  3. `code-module` — список процедур модуля по умолчанию ObjectModule.",
+        "  4. `code-procedure` — полный код конкретной процедуры.",
+        "",
+        "Имена объектов передаются БЕЗ префикса типа: "
+        "`{type: 'Report', name: 'АнализНачисленийИУдержаний'}`, "
+        "не `'Report.АнализНачисленийИУдержаний'`. Для smart-* "
+        "используется русский префикс: `'Справочник.Сотрудники'`.",
+    ])
+    return "\n".join(parts)
+
+
 def create_server() -> tuple[Server, ToolRegistry, PromptRegistry]:
     """
     Create and configure MCP server.
@@ -28,7 +66,7 @@ def create_server() -> tuple[Server, ToolRegistry, PromptRegistry]:
         Tuple of configured MCP Server instance, ToolRegistry, and PromptRegistry
     """
     config = get_config()
-    server = Server(config.server.name)
+    server = Server(config.server.name, instructions=_build_instructions())
 
     # Initialize registries
     registry = ToolRegistry()

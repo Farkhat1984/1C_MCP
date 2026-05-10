@@ -61,6 +61,12 @@ def _ci_eq(a: str, b: str) -> bool:
 
 
 def _find_local(elem: etree._Element, name: str) -> etree._Element | None:
+    """Case-insensitive local-name lookup.
+
+    1С DataCompositionSchema uses camelCase (``<dataSet>``, ``<dataPath>``)
+    while EDT-style exports may use PascalCase. Match either by
+    comparing case-folded names so the parser handles both layouts.
+    """
     for child in elem:
         if _ci_eq(_localname(child.tag), name):
             return child
@@ -69,6 +75,39 @@ def _find_local(elem: etree._Element, name: str) -> etree._Element | None:
 
 def _find_all_local(elem: etree._Element, name: str) -> list[etree._Element]:
     return [child for child in elem if _ci_eq(_localname(child.tag), name)]
+
+
+_XSI_TYPE_KEY = "{http://www.w3.org/2001/XMLSchema-instance}type"
+
+
+def _xsi_type(elem: etree._Element) -> str:
+    return elem.get(_XSI_TYPE_KEY, "")
+
+
+def _extract_local_string(elem: etree._Element | None) -> str:
+    """Read a 1C ``LocalStringType`` element.
+
+    The shape is ``<title><v8:item><v8:lang>ru</v8:lang><v8:content>...
+    </v8:content></v8:item></title>``. We pick the ``ru`` content when
+    present, otherwise fall back to the first ``<content>`` we find, and
+    finally to the bare element text for non-localised strings.
+    """
+    if elem is None:
+        return ""
+    items = _find_all_local(elem, "item")
+    fallback = ""
+    for item in items:
+        lang_node = _find_local(item, "lang")
+        content_node = _find_local(item, "content")
+        if content_node is None or content_node.text is None:
+            continue
+        text = content_node.text.strip()
+        if lang_node is not None and (lang_node.text or "").strip().lower() == "ru":
+            return text
+        fallback = fallback or text
+    if fallback:
+        return fallback
+    return _text(elem)
 
 
 class CompositionParser:
@@ -131,17 +170,11 @@ class CompositionParser:
 
     # ------------------------------------------------------------------
     def _parse_data_set(self, elem: etree._Element) -> CompositionDataSet:
-        kind_local = _localname(elem.tag)
-        # In some files the kind is stored as an attribute or child <Type>
-        kind = _DATASET_KIND_MAP.get(kind_local, DataSetKind.UNKNOWN)
-        # Real 8.3 export: <dataSet xsi:type="DataSetQuery"> — the kind
-        # lives in the xsi:type discriminator, not the tag name.
-        if kind is DataSetKind.UNKNOWN:
-            xsi_type = elem.get(
-                "{http://www.w3.org/2001/XMLSchema-instance}type", ""
-            )
-            if xsi_type:
-                kind = _DATASET_KIND_MAP.get(xsi_type, DataSetKind.UNKNOWN)
+        # 1C schemas declare the kind via xsi:type on <dataSet> itself
+        # (DataSetQuery / DataSetObject / DataSetUnion); the element
+        # local-name is just "dataSet".
+        kind_hint = _xsi_type(elem) or _localname(elem.tag)
+        kind = _DATASET_KIND_MAP.get(kind_hint, DataSetKind.UNKNOWN)
         if kind is DataSetKind.UNKNOWN:
             t = _find_local(elem, "Type")
             if t is not None and t.text:
@@ -149,13 +182,23 @@ class CompositionParser:
 
         name = _text(_find_local(elem, "Name")) or elem.get("name", "")
         ds = CompositionDataSet(name=name or "DataSet", kind=kind)
-        query_node = _find_local(elem, "Query")
-        if query_node is not None and query_node.text:
-            ds.query_text = query_node.text.strip()
 
-        # Fields may live in a <Fields> container OR directly under the
+        # <query> may carry the text directly or wrap a <queryText> child.
+        query_node = _find_local(elem, "Query")
+        if query_node is not None:
+            qtext_node = _find_local(query_node, "QueryText") or _find_local(
+                query_node, "Text"
+            )
+            if qtext_node is not None and qtext_node.text:
+                ds.query_text = qtext_node.text.strip()
+            elif query_node.text and query_node.text.strip():
+                ds.query_text = query_node.text.strip()
+
+        # Fields may live in a <Fields> container or directly under the
         # data-set. Real 8.3 export uses lowerCamelCase (<field>) directly
-        # under <dataSet>; older docs used Pascal case <Field> in <Fields>.
+        # under <dataSet>; older / EDT exports use PascalCase <Field> in
+        # <Fields>. A nested <dataSet> means a Union — flatten its fields
+        # so the union's field list reflects the source datasets.
         seen: set[int] = set()
         container = _find_local(elem, "Fields")
         if container is not None:
@@ -165,30 +208,35 @@ class CompositionParser:
                 ):
                     ds.fields.append(self._parse_data_set_field(f_elem))
                     seen.add(id(f_elem))
-        for f_elem in elem:
-            if id(f_elem) in seen:
+        for child in elem:
+            if id(child) in seen:
                 continue
-            local = _localname(f_elem.tag)
+            local = _localname(child.tag)
             if _ci_eq(local, "field") or _ci_eq(local, "datasetfield"):
-                ds.fields.append(self._parse_data_set_field(f_elem))
+                ds.fields.append(self._parse_data_set_field(child))
+            elif _ci_eq(local, "dataset"):
+                ds.fields.extend(self._parse_data_set(child).fields)
         return ds
 
     def _parse_data_set_field(self, elem: etree._Element) -> CompositionField:
         name = (
             _text(_find_local(elem, "DataPath"))
+            or _text(_find_local(elem, "Field"))
             or _text(_find_local(elem, "Name"))
             or elem.get("name", "")
         )
         title_node = _find_local(elem, "Title")
-        title = _text(title_node) if title_node is not None else ""
-        type_node = _find_local(elem, "Type")
+        title = _extract_local_string(title_node) if title_node is not None else ""
+        type_node = _find_local(elem, "ValueType")
+        if type_node is None:
+            type_node = _find_local(elem, "Type")
         type_str = ""
         if type_node is not None:
             inner = _find_local(type_node, "Type")
             type_str = inner.text.strip() if inner is not None and inner.text else (
                 type_node.text.strip() if type_node.text else ""
             )
-        role = _text(_find_local(elem, "Role"))
+        role = _text(_find_local(elem, "Role")) or _xsi_type(elem)
         return CompositionField(name=name, title=title, type=type_str, role=role)
 
     def _parse_calc_field(self, elem: etree._Element) -> CompositionField:
@@ -201,7 +249,7 @@ class CompositionParser:
     def _parse_parameter(self, elem: etree._Element) -> CompositionParameter:
         name = _text(_find_local(elem, "Name")) or elem.get("name", "")
         title_node = _find_local(elem, "Title")
-        title = _text(title_node) if title_node is not None else ""
+        title = _extract_local_string(title_node) if title_node is not None else ""
         type_node = _find_local(elem, "ValueType")
         if type_node is None:
             type_node = _find_local(elem, "Type")
@@ -235,13 +283,13 @@ class CompositionParser:
         expr_node = _find_local(elem, "Expression")
         expr = _text(expr_node)
         title_node = _find_local(elem, "Title")
-        title = _text(title_node) if title_node is not None else ""
+        title = _extract_local_string(title_node) if title_node is not None else ""
         return CompositionResource(field=field, expression=expr, title=title)
 
     def _parse_settings(self, elem: etree._Element) -> CompositionSettings:
         name = _text(_find_local(elem, "Name")) or "Default"
         title_node = _find_local(elem, "Title")
-        title = _text(title_node) if title_node is not None else ""
+        title = _extract_local_string(title_node) if title_node is not None else ""
         selection: list[str] = []
         sel_root = _find_local(elem, "Selection")
         if sel_root is not None:

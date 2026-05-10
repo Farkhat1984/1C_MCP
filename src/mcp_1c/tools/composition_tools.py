@@ -22,7 +22,7 @@ class _CompositionToolBase(BaseTool):
 
     async def _resolve(self, args: dict[str, Any]) -> DataCompositionSchema:
         name = args.get("name") or args.get("report") or ""
-        schema_name = args.get("schema") or "MainSchema"
+        schema_name = args.get("schema") or args.get("template") or None
         if not name:
             raise ToolError("Report name is required (`name`)", code="MISSING_ARGUMENT")
         config_path = self._metadata.config_path
@@ -31,7 +31,7 @@ class _CompositionToolBase(BaseTool):
         try:
             return await self._engine.get_schema(name, schema_name)
         except FileNotFoundError as exc:
-            raise ToolError(str(exc), code="SCHEMA_NOT_FOUND")
+            raise ToolError(str(exc), code="SCHEMA_NOT_FOUND") from exc
 
 
 class CompositionGetTool(_CompositionToolBase):
@@ -46,8 +46,10 @@ class CompositionGetTool(_CompositionToolBase):
             "name": {"type": "string", "description": "Имя отчёта"},
             "schema": {
                 "type": "string",
-                "description": "Имя схемы (по умолчанию MainSchema)",
-                "default": "MainSchema",
+                "description": (
+                    "Имя шаблона СКД. По умолчанию автоопределяется первый "
+                    "шаблон с TemplateType=DataCompositionSchema. Алиас: `template`."
+                ),
             },
         },
         "required": ["name"],
@@ -83,8 +85,16 @@ class CompositionFieldsTool(_CompositionToolBase):
     input_schema: ClassVar[dict[str, Any]] = {
         "type": "object",
         "properties": {
-            "name": {"type": "string"},
-            "schema": {"type": "string", "default": "MainSchema"},
+            "name": {"type": "string", "description": "Имя отчёта"},
+            "schema": {
+                "type": "string",
+                "description": (
+                    "Имя шаблона СКД. По умолчанию автоопределяется первый "
+                    "шаблон с TemplateType=DataCompositionSchema (для русских "
+                    "конфигураций обычно `ОсновнаяСхемаКомпоновкиДанных`). "
+                    "Алиас: `template`."
+                ),
+            },
         },
         "required": ["name"],
     }
@@ -122,8 +132,16 @@ class CompositionDatasetsTool(_CompositionToolBase):
     input_schema: ClassVar[dict[str, Any]] = {
         "type": "object",
         "properties": {
-            "name": {"type": "string"},
-            "schema": {"type": "string", "default": "MainSchema"},
+            "name": {"type": "string", "description": "Имя отчёта"},
+            "schema": {
+                "type": "string",
+                "description": (
+                    "Имя шаблона СКД. По умолчанию автоопределяется первый "
+                    "шаблон с TemplateType=DataCompositionSchema (для русских "
+                    "конфигураций обычно `ОсновнаяСхемаКомпоновкиДанных`). "
+                    "Алиас: `template`."
+                ),
+            },
         },
         "required": ["name"],
     }
@@ -152,8 +170,16 @@ class CompositionSettingsTool(_CompositionToolBase):
     input_schema: ClassVar[dict[str, Any]] = {
         "type": "object",
         "properties": {
-            "name": {"type": "string"},
-            "schema": {"type": "string", "default": "MainSchema"},
+            "name": {"type": "string", "description": "Имя отчёта"},
+            "schema": {
+                "type": "string",
+                "description": (
+                    "Имя шаблона СКД. По умолчанию автоопределяется первый "
+                    "шаблон с TemplateType=DataCompositionSchema (для русских "
+                    "конфигураций обычно `ОсновнаяСхемаКомпоновкиДанных`). "
+                    "Алиас: `template`."
+                ),
+            },
         },
         "required": ["name"],
     }

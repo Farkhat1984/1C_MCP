@@ -9,9 +9,33 @@ Phase 2.3: Validation, linting, formatting, and complexity analysis tools.
 from pathlib import Path
 from typing import Any, ClassVar
 
-from mcp_1c.domain.metadata import ModuleType
+from mcp_1c.domain.metadata import MetadataType, ModuleType
 from mcp_1c.engines.code import BslLanguageServer, CodeEngine, DependencyGraphBuilder
 from mcp_1c.tools.base import BaseTool, ToolError, parse_metadata_type
+
+_DEFAULT_MODULE_BY_TYPE: dict[MetadataType, ModuleType] = {
+    MetadataType.COMMON_MODULE: ModuleType.COMMON_MODULE,
+}
+
+
+def _resolve_module_type(
+    metadata_type: MetadataType, module_str: str | None
+) -> ModuleType:
+    """Pick the module file matching the metadata type when caller omits it.
+
+    Common modules expose only ``Module.bsl`` (ModuleType.COMMON_MODULE);
+    blindly defaulting to ObjectModule makes ``code-*`` calls miss them
+    entirely. When the caller didn't pass ``module``, we infer the right
+    type from the metadata kind. When they did pass one, we trust it.
+    """
+    if module_str:
+        try:
+            return ModuleType(module_str)
+        except ValueError as exc:
+            raise ToolError(
+                f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE"
+            ) from exc
+    return _DEFAULT_MODULE_BY_TYPE.get(metadata_type, ModuleType.OBJECT_MODULE)
 
 
 class CodeModuleTool(BaseTool):
@@ -58,16 +82,12 @@ class CodeModuleTool(BaseTool):
         """Get module code."""
         type_str = arguments["type"]
         name = arguments["name"]
-        module_str = arguments.get("module", "ObjectModule")
+        module_str = arguments.get("module")
         include_code = arguments.get("include_code", True)
 
         metadata_type = parse_metadata_type(type_str)
 
-        # Parse module type
-        try:
-            module_type = ModuleType(module_str)
-        except ValueError:
-            raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
+        module_type = _resolve_module_type(metadata_type, module_str)
 
         # Get module
         engine = self._engine
@@ -151,14 +171,11 @@ class CodeProcedureTool(BaseTool):
         type_str = arguments["type"]
         obj_name = arguments["name"]
         proc_name = arguments["procedure"]
-        module_str = arguments.get("module", "ObjectModule")
+        module_str = arguments.get("module")
 
         metadata_type = parse_metadata_type(type_str)
 
-        try:
-            module_type = ModuleType(module_str)
-        except ValueError:
-            raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
+        module_type = _resolve_module_type(metadata_type, module_str)
 
         # Get procedure
         engine = self._engine
@@ -379,16 +396,13 @@ class CodeDependenciesTool(BaseTool):
         type_str = arguments["type"]
         obj_name = arguments["name"]
         proc_name = arguments.get("procedure")
-        module_str = arguments.get("module", "ObjectModule")
+        module_str = arguments.get("module")
         depth = arguments.get("depth", 1)
         include_metadata = arguments.get("include_metadata", True)
 
         metadata_type = parse_metadata_type(type_str)
 
-        try:
-            module_type = ModuleType(module_str)
-        except ValueError:
-            raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
+        module_type = _resolve_module_type(metadata_type, module_str)
 
         # Get module path
         code_engine = self._engine
@@ -518,15 +532,12 @@ class CodeAnalyzeTool(BaseTool):
         """Perform extended analysis."""
         type_str = arguments["type"]
         obj_name = arguments["name"]
-        module_str = arguments.get("module", "ObjectModule")
+        module_str = arguments.get("module")
         analysis_type = arguments.get("analysis_type", "full")
 
         metadata_type = parse_metadata_type(type_str)
 
-        try:
-            module_type = ModuleType(module_str)
-        except ValueError:
-            raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
+        module_type = _resolve_module_type(metadata_type, module_str)
 
         # Get module
         code_engine = self._engine
@@ -658,15 +669,12 @@ class CodeCallGraphTool(BaseTool):
         type_str = arguments["type"]
         obj_name = arguments["name"]
         proc_name = arguments["procedure"]
-        module_str = arguments.get("module", "ObjectModule")
+        module_str = arguments.get("module")
         direction = arguments.get("direction", "both")
 
         metadata_type = parse_metadata_type(type_str)
 
-        try:
-            module_type = ModuleType(module_str)
-        except ValueError:
-            raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
+        module_type = _resolve_module_type(metadata_type, module_str)
 
         # Get module
         code_engine = self._engine
@@ -746,7 +754,7 @@ class CodeValidateTool(BaseTool):
             # Get from metadata
             type_str = arguments.get("type")
             obj_name = arguments.get("name")
-            module_str = arguments.get("module", "ObjectModule")
+            module_str = arguments.get("module")
 
             if not type_str or not obj_name:
                 raise ToolError(
@@ -756,10 +764,7 @@ class CodeValidateTool(BaseTool):
 
             metadata_type = parse_metadata_type(type_str)
 
-            try:
-                module_type = ModuleType(module_str)
-            except ValueError:
-                raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
+            module_type = _resolve_module_type(metadata_type, module_str)
 
             code_engine = self._engine
             module = await code_engine.get_module(metadata_type, obj_name, module_type)
@@ -846,7 +851,7 @@ class CodeLintTool(BaseTool):
         else:
             type_str = arguments.get("type")
             obj_name = arguments.get("name")
-            module_str = arguments.get("module", "ObjectModule")
+            module_str = arguments.get("module")
 
             if not type_str or not obj_name:
                 raise ToolError(
@@ -856,10 +861,7 @@ class CodeLintTool(BaseTool):
 
             metadata_type = parse_metadata_type(type_str)
 
-            try:
-                module_type = ModuleType(module_str)
-            except ValueError:
-                raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
+            module_type = _resolve_module_type(metadata_type, module_str)
 
             code_engine = self._engine
             module = await code_engine.get_module(metadata_type, obj_name, module_type)
@@ -958,7 +960,7 @@ class CodeFormatTool(BaseTool):
         else:
             type_str = arguments.get("type")
             obj_name = arguments.get("name")
-            module_str = arguments.get("module", "ObjectModule")
+            module_str = arguments.get("module")
 
             if not type_str or not obj_name:
                 raise ToolError(
@@ -968,10 +970,7 @@ class CodeFormatTool(BaseTool):
 
             metadata_type = parse_metadata_type(type_str)
 
-            try:
-                module_type = ModuleType(module_str)
-            except ValueError:
-                raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
+            module_type = _resolve_module_type(metadata_type, module_str)
 
             code_engine = self._engine
             module = await code_engine.get_module(metadata_type, obj_name, module_type)
@@ -1076,7 +1075,7 @@ class CodeComplexityTool(BaseTool):
         else:
             type_str = arguments.get("type")
             obj_name = arguments.get("name")
-            module_str = arguments.get("module", "ObjectModule")
+            module_str = arguments.get("module")
 
             if not type_str or not obj_name:
                 raise ToolError(
@@ -1086,10 +1085,7 @@ class CodeComplexityTool(BaseTool):
 
             metadata_type = parse_metadata_type(type_str)
 
-            try:
-                module_type = ModuleType(module_str)
-            except ValueError:
-                raise ToolError(f"Unknown module type: {module_str}", code="INVALID_MODULE_TYPE")
+            module_type = _resolve_module_type(metadata_type, module_str)
 
             code_engine = self._engine
             module = await code_engine.get_module(metadata_type, obj_name, module_type)

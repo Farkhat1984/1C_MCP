@@ -17,13 +17,14 @@ class MetadataInitTool(BaseTool):
 
     name: ClassVar[str] = "metadata-init"
     description: ClassVar[str] = (
-        "Initialize the metadata index for a 1C configuration. "
-        "Must be called before using other metadata tools. "
-        "Scans the configuration directory and builds a searchable index. "
-        "Phase F3: also accepts ``overlay_roots`` to index developer-supplied "
-        "trees (e.g. own libraries of CommonModules) alongside the main "
-        "config — they appear in the same KG, search index and embeddings, "
-        "labelled with ``source='overlay:<name>'``."
+        "Re-initialize or replace the metadata index for a 1C configuration. "
+        "DO NOT call this tool if the server was started with MCP_CONFIG_PATH "
+        "(env-var) — in that case the index is already loaded and ready, and "
+        "calling metadata-init only restarts a slow re-scan. Use this tool ONLY "
+        "to switch to a different configuration path, force a full re-index, "
+        "or attach developer-supplied `overlay_roots` (extra source trees "
+        "indexed alongside the main config and tagged with "
+        "`source='overlay:<name>'`)."
     )
     input_schema: ClassVar[dict[str, Any]] = {
         "type": "object",
