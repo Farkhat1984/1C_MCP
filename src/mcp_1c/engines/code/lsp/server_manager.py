@@ -44,7 +44,7 @@ ENV_DISABLE = "MCP_BSL_LS_DISABLED"
 
 _DEFAULT_JAVA_OPTS = (
     "-Xms256m",
-    "-Xmx2g",
+    "-Xmx1g",
     "-Dfile.encoding=UTF-8",
     "-Dstdout.encoding=UTF-8",
 )
